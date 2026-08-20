@@ -1,4 +1,4 @@
-# 🌾 KRISHI VIKAS - Autonomous Agricultural Drone & 3D Field Management Platform
+# 🌾 KRISHI VIKAS — Autonomous Agricultural Drone & 3D Field Management Platform
 
 [![React](https://img.shields.io/badge/React-18.3.1-blue.svg)](https://react.dev/)
 [![Three.js](https://img.shields.io/badge/Three.js-0.168.0-black.svg)](https://threejs.org/)
@@ -6,16 +6,63 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.13-38bdf8.svg)](https://tailwindcss.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**KRISHI VIKAS** is an AI-powered agricultural drone simulation and field management web platform. It features an interactive **3D WebGL simulation** demonstrating an autonomous quadcopter drone equipped with a triple-payload system (Seed Hopper, Water Tank, Pesticide Container) performing **10-meter precision grid seeding**, automated water mist irrigation, crop health monitoring, and targeted pesticide spraying.
+**KRISHI VIKAS** is an AI-powered agricultural drone simulation and field management web platform. It features an interactive **GPS Mission Planner** and **3D WebGL simulation** demonstrating an autonomous quadcopter drone equipped with a triple-payload system (Seed Hopper, Water Tank, Pesticide Container) performing precision seeding, automated water mist irrigation, crop health monitoring, and targeted pesticide spraying.
 
 ---
 
-## 🚀 Key Features
+## 🛰️ KRISHI VIKASH — Phase I: Real Field Definition & GPS Mission Planner
+
+> **Phase I Scope & Disclaimer**: Phase I provides a configurable field and GPS mission-planning foundation. Drone execution, telemetry, AI-based crop analysis and physical drone control remain simulated or planned for later phases.
+
+### 1. What Phase I Implements
+* **Real Field Boundaries**: Multi-point GPS polygon boundary definitions (`[{ latitude, longitude }, ...]`) for authentic agricultural plots.
+* **Geospatial & Field Validation**: Enforces coordinate validity, boundary vertex ordering, polygon closure, non-collinearity, and duplicate vertex rejection.
+* **Centralized Crop Agronomic Database**: Configurable agronomic parameters for crops including Wheat, Rice/Paddy, Corn/Maize, Cotton, Sugarcane, Mustard, Potato, and Tomato.
+* **Crop-Specific Spacing Engine**: Dynamically calculates row spacing ($m$), plant spacing ($m$), flight altitude ($m$), swath width ($m$), and seeding drop triggers.
+* **GPS Waypoint Generation**: Systematic Boustrophedon (lawnmower) survey coverage algorithm constrained strictly within the GPS field boundary.
+* **2D Interactive Mission Preview**: Real-time canvas preview displaying polygon bounds, flight swaths, waypoint nodes, seed points, and mission analytics (distance, estimated time, payload consumables, battery drain).
+* **Mission Export**: Export generated waypoints to QGroundControl / Mission Planner CSV and structured JSON.
+* **Connected 3D WebGL Simulator**: The 3D Three.js simulator dynamically ingests generated GPS missions, converts coordinates to local space, renders field boundary perimeter/beacons, and flies the quadcopter through the route with crop-specific sprout placement.
+* **Local Persistence**: Fields and custom boundaries persist in `localStorage`.
+
+### 2. What is Real / Configurable vs. Simulated
+| Component | Classification | Description |
+| :--- | :--- | :--- |
+| **GPS Polygon Boundaries** | ✅ **Real / Configurable** | Real WGS-84 latitude/longitude coordinates defined for fields. |
+| **Field Geodesic Area** | ✅ **Real Calculation** | Geodesic surface acreage calculated via local Shoelace projection. |
+| **Crop Spacing Parameters** | ✅ **Configurable** | Initial agronomic engineering parameters tuned per crop species. |
+| **GPS Waypoints** | ✅ **Real Calculation** | Deterministic Boustrophedon swath generation & waypoint sequencing. |
+| **Mission Export (CSV/JSON)** | ✅ **Real Tooling** | QGroundControl / ArduPilot compatible waypoint format export. |
+| **3D Drone Flight** | 🎮 **Simulated** | Procedural WebGL quadcopter following converted waypoint paths. |
+| **Seed Placement / Sprouting** | 🎮 **Simulated** | 3D visual sprout generation at calculated crop spacing points. |
+| **Water / Pesticide Spray** | 🎮 **Simulated** | Particle physics mist/fog systems. |
+| **Telemetry HUD & Cockpit** | 🎮 **Simulated** | Simulated battery drain, motor RPMs, and sensor locks. |
+| **Hardware Control / MAVLink** | ⏳ **Future Phase** | Real flight controller / autopilot communication deferred to later phases. |
+
+### 3. Coordinate System & Conversion Pipeline
+The system maps spherical GPS coordinates to Three.js Cartesian space:
+```
+Real GPS (WGS-84: Latitude, Longitude in degrees)
+      ↓  (Transverse Equirectangular projection relative to polygon centroid datum)
+Local Metric Cartesian Coordinates (X: Easting in meters, Z: Northing in meters)
+      ↓  (Mapped to 3D simulation coordinate frame)
+Three.js World Coordinates (X: East, Y: Flight Altitude Up, Z: South)
+```
+
+### 4. What Phase II Will Add
+* Computer Vision / AI image survey inference (YOLO disease & weed detection).
+* Multispectral NDVI vegetation health index mapping.
+* Variable-rate precision spot spraying.
+* Real-time telemetry communication protocol (MAVLink / ROS2 integration).
+
+---
+
+## 🚀 Key Application Features
 
 ### 🚁 1. Interactive 3D WebGL Simulation Engine
-* **Procedural 3D Quadcopter Drone**: Central metallic chassis, 4 motor arms with high-speed spinning rotors, navigation LEDs, and a downward LiDAR laser cone.
-* **10-Meter Precision Seeding**: Drone flies along agricultural grid lines and drops 1 seed every 10 meters into the soil.
-* **Dynamic 3D Sprout Growth**: Seeds automatically germinate into 3D sprout plants at soil level when dropped.
+* **Procedural 3D Quadcopter Drone**: Central metallic chassis, 4 motor arms with high-speed spinning rotors, navigation LEDs, and downward LiDAR laser cone.
+* **Dynamic Waypoint Tracking**: Drone follows GPS mission paths generated by the Mission Planner.
+* **Crop-Specific Sprout Generation**: Seeds germinate into 3D sprout plants at the exact crop plant spacing intervals.
 * **Particle Mist Systems**:
   * 💧 **Water Irrigation Mode**: Translucent blue particle stream hydrates soil rows.
   * 🌿 **Pesticide Protection Mode**: Chemical fog mist protects mature crops without human exposure.
@@ -23,20 +70,28 @@
 
 ---
 
-### 🌾 2. Field Management System ("Khet Niyojan")
-* **Field Registration**: Register farmer fields with Name, Village/Location, Area (Acres), Primary Crop Type (*Wheat, Rice/Paddy, Cotton, Corn, Sugarcane, Mustard*), Soil Type, and Soil Moisture %.
-* **Soil & Pest Risk Monitoring**: Track soil hydration status and automated pesticide schedules.
-* **One-Click Drone Deployment**: Select any field to instantly load its coordinates into the 3D drone simulator.
+### 🗺️ 2. GPS Mission Planner & Crop Spacing
+* **Boustrophedon Swath Generator**: Produces optimal parallel lawnmower flight tracks inside any polygon.
+* **Crop Agronomics**: Select from Wheat, Rice, Corn, Cotton, Sugarcane, Mustard, Potato, and Tomato.
+* **Custom Spacing Controls**: Fine-tune row spacing, plant spacing, swath width, flight altitude, and speed.
+* **Mission Preview & Export**: Inspect waypoint tables and download CSV/JSON flight plans.
 
 ---
 
-### ⚡ 3. Real-Time Telemetry HUD & Diagnostics
+### 🌾 3. Field Management System ("Khet Niyojan")
+* **Polygon Vertex Editor**: Add, edit, and delete GPS coordinates for any field.
+* **Soil & Pest Risk Monitoring**: Track soil hydration status and automated pesticide schedules.
+* **Pre-loaded Indian Agricultural Fields**: Includes authentic sample parcels from Punjab, Haryana, Gujarat, and Maharashtra.
+
+---
+
+### ⚡ 4. Real-Time Telemetry HUD & Diagnostics
 * **Live Gauges**: LiPo battery voltage/capacity %, Seed hopper kg remaining, Water tank liters, Pesticide chemical level.
 * **Avionics & Motor Status**: Real-time RPM tracking for Motors #1–#4, ESC synchronizer status, GPS constellation lock (16 satellites), and LiDAR altitude readout.
 
 ---
 
-### 📊 4. Yield Analytics & Farmer Operation Guide
+### 📊 5. Yield Analytics & Farmer Operation Guide
 * **Quantitative Efficiency Metrics**: Demonstrates **99.4% seeding precision**, **48% water conservation**, **62% chemical reduction**, and **12x time savings per acre**.
 * **Kisan Guide**: Multilingual (Hindi/English) instructions for farmers.
 
@@ -47,6 +102,7 @@
 * **Frontend**: React 18, Vite
 * **3D Engine**: Three.js (WebGL rendering, custom shaders, lighting, particle physics)
 * **Styling**: Tailwind CSS, Glassmorphism UI
+* **Geospatial Utilities**: Custom Geodetic Transverse Equirectangular & Shoelace Geodesic Projection
 * **Icons**: Lucide React
 
 ---
@@ -54,7 +110,7 @@
 ## 📂 Project Architecture
 
 ```
-SIH/
+agri-drone/
 ├── index.html
 ├── package.json
 ├── vite.config.js
@@ -65,82 +121,51 @@ SIH/
 └── src/
     ├── main.jsx
     ├── index.css
-    ├── App.jsx             <-- Main Container & Global Telemetry State
+    ├── App.jsx             <-- Main App Container & Tab Routing
+    ├── data/
+    │   └── cropConfig.js   <-- Centralized Agronomic Crop Parameters
+    ├── utils/
+    │   ├── geoUtils.js         <-- Geodetic GPS & Coordinate Transformations
+    │   ├── fieldValidator.js   <-- Field Boundary & Polygon Validation
+    │   ├── waypointGenerator.js<-- Boustrophedon Coverage Waypoint Generator
+    │   └── missionPlanner.js   <-- Mission Planning & CSV/JSON Exporters
     └── components/
-        ├── Navbar.jsx      <-- Header & Quick Gauges Bar
-        ├── FieldManagement.jsx <-- Field Registration & Khet Dashboard
+        ├── Navbar.jsx          <-- Navigation & Telemetry Header
+        ├── MissionPlanner.jsx  <-- 2D Interactive GPS Mission Planner & Preview
+        ├── FieldManagement.jsx <-- Field Polygon Editor & Khet Dashboard
         ├── TelemetryHUD.jsx     <-- Drone Cockpit & Battery/Tank Controls
         ├── AnalyticsDashboard.jsx <-- Efficiency Graphs & Yield Reports
         ├── FarmerGuide.jsx      <-- Kisan Nirdeshika Instruction Guide
         └── 3d/
-            └── DroneSimulator.jsx <-- Three.js 3D WebGL Simulation Engine
+            └── DroneSimulator.jsx <-- Dynamic 3D WebGL Drone Simulator
 ```
 
 ---
 
-## ⚙️ Getting Started / Local Setup
+## ⚙️ Local Setup & Run
 
 ### Prerequisites
-Make sure you have **Node.js (v18 or higher)** installed on your machine.
+* **Node.js (v18 or higher)**
 
 ### Installation Steps
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/krishi-vikas.git
-   cd krishi-vikas
-   ```
-
-2. **Install Dependencies**
+1. **Install Dependencies**
    ```bash
    npm install
    ```
 
-3. **Start the Development Server**
+2. **Start the Development Server**
    ```bash
    npm run dev
    ```
 
-4. **Open in Browser**
+3. **Open in Browser**
    Navigate to `http://localhost:5173/` in your web browser.
 
----
-
-## 📤 How to Push to GitHub Repository
-
-If you want to push this project to your own GitHub repository:
-
-```bash
-# 1. Initialize Git (if not already done)
-git init
-
-# 2. Add all files & commit
-git add .
-git commit -m "Initial commit: KRISHI VIKAS 3D Drone & Field Management System"
-
-# 3. Create a main branch
-git branch -M main
-
-# 4. Link your remote GitHub repository URL
-git remote add origin https://github.com/YOUR_USERNAME/krishi-vikas.git
-
-# 5. Push code to GitHub
-git push -u origin main
-```
-
----
-
-## 🎮 3D Simulator Controls
-
-| Action | Control |
-| :--- | :--- |
-| **Rotate 3D Scene** | Left-click + drag mouse |
-| **Zoom In / Out** | Mouse wheel scroll |
-| **Seeding Mode** | Drops 1 seed every 10m grid marker |
-| **Water Spray** | Emits blue mist stream over crop rows |
-| **Pesticide Spray** | Emits yellow chemical fog mist |
-| **Camera Angles** | Toggle `Orbit`, `Follow`, `POV`, `Top Grid` |
-| **Speed Multiplier** | Toggle `1x`, `2x`, or `5x` flight speed |
+4. **Production Build**
+   ```bash
+   npm run build
+   ```
 
 ---
 

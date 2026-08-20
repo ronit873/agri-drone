@@ -5,7 +5,7 @@ import {
   Activity, 
   BarChart3, 
   BookOpen, 
-  ShieldCheck,
+  Compass,
   Zap,
   Droplets,
   Sprout
@@ -30,11 +30,11 @@ export default function Navbar({ activeTab, setActiveTab, droneState, activeFiel
                   KRISHI VIKAS
                 </span>
                 <span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full">
-                  AI DRONE
+                  PHASE I
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
-                Autonomous 10m Precision Seeding & Field Care System
+                Real Field GPS Mission Planner &amp; 3D Autonomous Simulator
               </p>
             </div>
           </div>
@@ -54,6 +54,18 @@ export default function Navbar({ activeTab, setActiveTab, droneState, activeFiel
             </button>
 
             <button
+              onClick={() => setActiveTab('planner')}
+              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                activeTab === 'planner'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md font-semibold'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <Compass className="w-4 h-4" />
+              <span>Mission Planner</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('fields')}
               className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 activeTab === 'fields'
@@ -62,7 +74,7 @@ export default function Navbar({ activeTab, setActiveTab, droneState, activeFiel
               }`}
             >
               <MapPin className="w-4 h-4" />
-              <span>Field Management</span>
+              <span>Field Boundaries</span>
             </button>
 
             <button
@@ -102,7 +114,7 @@ export default function Navbar({ activeTab, setActiveTab, droneState, activeFiel
             </button>
           </nav>
 
-          {/* Quick Telemetry Indicators */}
+          {/* Quick Telemetry Status Indicators */}
           <div className="flex items-center space-x-3">
             <div className="hidden lg:flex items-center space-x-3 text-xs bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-1.5">
               <div className="flex items-center space-x-1.5 text-emerald-400">
@@ -126,7 +138,7 @@ export default function Navbar({ activeTab, setActiveTab, droneState, activeFiel
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span className="capitalize">{droneState.status}</span>
+              <span className="capitalize">{droneState.status || 'GPS Lock Active'}</span>
             </div>
           </div>
 
@@ -141,7 +153,15 @@ export default function Navbar({ activeTab, setActiveTab, droneState, activeFiel
             activeTab === 'simulator' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'text-slate-400'
           }`}
         >
-          3D Demo
+          3D Sim
+        </button>
+        <button
+          onClick={() => setActiveTab('planner')}
+          className={`flex-1 py-1.5 px-2 rounded text-center text-xs font-medium whitespace-nowrap ${
+            activeTab === 'planner' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'text-slate-400'
+          }`}
+        >
+          Planner
         </button>
         <button
           onClick={() => setActiveTab('fields')}
