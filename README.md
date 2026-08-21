@@ -43,7 +43,8 @@ KRISHI VIKAS aims to become a full-stack, autonomous agricultural intelligence a
 
 * **Phase 0 — Project Vision & Planning**: ✅ **COMPLETED**
 * **Phase I — Real Field Definition & GPS Mission Planner**: ✅ **COMPLETED**
-* **Phase II — Computer Vision & AI (Dataset & YOLO Pipeline)**: 🟡 **NEXT / IN PROGRESS**
+* **Phase II — Computer Vision & AI (Dataset & YOLO Pipeline)**: 🟡 **HALTED/AUDITED** (Dataset identified as classification-only; awaiting bounding box dataset).
+* **Presentation Demo**: ✅ **COMPLETED** (Located in `KRISHI-VIKASH-DEMO/` directory).
 
 ```text
 [ Phase 0: Planned ] ──> [ Phase 1: Completed ] ──> [ Phase 2: In Progress ] ──> [ Phases 3-13: Planned ]
