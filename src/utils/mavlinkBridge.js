@@ -5,7 +5,7 @@
  */
 
 // Standard MAVLink Command IDs
-export className MAVLinkCommands {
+export class MAVLinkCommands {
   static NAV_WAYPOINT = 16;
   static NAV_TAKEOFF = 22;
   static NAV_LAND = 21;
@@ -14,7 +14,7 @@ export className MAVLinkCommands {
   static DO_SPRAY = 216;
 }
 
-export className MavlinkHardwareBridge {
+export class MavlinkHardwareBridge {
   constructor() {
     this.isConnected = false;
     this.port = null;
