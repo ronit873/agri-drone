@@ -13,6 +13,17 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# AI Model weights & datasets
+*.pt
+*.pth
+*.onnx
+*.bin
+*.engine
+
+# Environment
+.env
+.env.*
+
 # Editor & OS files
 .vscode/*
 !.vscode/extensions.json

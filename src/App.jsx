@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
+import DashboardView from './components/DashboardView';
 import DroneSimulator from './components/3d/DroneSimulator';
 import MissionPlanner from './components/MissionPlanner';
 import FieldManagement from './components/FieldManagement';
+import PlantHealthView from './components/PlantHealthView';
+import AlertsView from './components/AlertsView';
+import ReportsView from './components/ReportsView';
+import SettingsView from './components/SettingsView';
 import TelemetryHUD from './components/TelemetryHUD';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import FarmerGuide from './components/FarmerGuide';
@@ -90,7 +95,7 @@ const INITIAL_FIELDS = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('simulator'); // 'simulator', 'planner', 'fields', 'telemetry', 'analytics', 'guide'
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   // Load fields with LocalStorage fallback for Phase I persistence
   const [fields, setFields] = useState(() => {
@@ -134,13 +139,13 @@ export default function App() {
     if (generatedPlan) {
       setActiveMission(generatedPlan);
     }
-    setActiveTab('simulator');
+    setActiveTab('dashboard');
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col">
+    <div className="min-h-screen bg-surface text-on-surface font-sans flex flex-col antialiased">
       
-      {/* Top Header Navigation */}
+      {/* Top Header & Left Navigation Sidebar */}
       <Navbar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
@@ -148,18 +153,19 @@ export default function App() {
         activeField={activeField}
       />
 
-      {/* Main Tab Content */}
-      <main className="flex-1">
-        {activeTab === 'simulator' && (
-          <DroneSimulator 
+      {/* Main View Workspace */}
+      <main className="flex-1 md:pl-[280px]">
+        {activeTab === 'dashboard' && (
+          <DashboardView 
             droneState={droneState}
             setDroneState={setDroneState}
             activeField={activeField}
             activeMission={activeMission}
+            onNavigateTab={setActiveTab}
           />
         )}
 
-        {activeTab === 'planner' && (
+        {(activeTab === 'missions' || activeTab === 'planner') && (
           <MissionPlanner
             activeField={activeField}
             activeMission={activeMission}
@@ -174,29 +180,68 @@ export default function App() {
             setFields={setFields}
             activeField={activeField}
             setActiveField={setActiveField}
-            onDeployDrone={() => setActiveTab('simulator')}
-            onPlanMission={() => setActiveTab('planner')}
+            onDeployDrone={() => setActiveTab('dashboard')}
+            onPlanMission={() => setActiveTab('missions')}
           />
         )}
 
-        {activeTab === 'telemetry' && (
-          <TelemetryHUD 
-            droneState={droneState}
-            setDroneState={setDroneState}
+        {activeTab === 'plant_health' && (
+          <PlantHealthView 
             activeField={activeField}
           />
         )}
 
-        {activeTab === 'analytics' && (
-          <AnalyticsDashboard 
-            droneState={droneState}
+        {(activeTab === 'tracking' || activeTab === 'simulator') && (
+          <div className="p-gutter max-w-[1600px] mx-auto flex flex-col gap-4">
+            <div className="flex justify-between items-center bg-surface-container-lowest p-4 rounded-xl border border-outline-variant">
+              <div>
+                <h1 className="text-headline-md font-bold text-on-surface">Full-Screen 3D WebGL Flight Tracking</h1>
+                <p className="text-label-sm text-on-surface-variant">Live telemetry and quadcopter autonomous controls</p>
+              </div>
+              <button 
+                onClick={() => setActiveTab('dashboard')}
+                className="border border-outline-variant hover:bg-surface-container-low px-4 py-2 rounded-lg text-label-md font-semibold"
+              >
+                Back to Bento Dashboard
+              </button>
+            </div>
+            
+            <div className="h-[680px] rounded-xl overflow-hidden border border-outline-variant shadow-sm relative">
+              <DroneSimulator 
+                droneState={droneState}
+                setDroneState={setDroneState}
+                activeField={activeField}
+                activeMission={activeMission}
+              />
+            </div>
+
+            <TelemetryHUD 
+              droneState={droneState}
+              setDroneState={setDroneState}
+              activeField={activeField}
+            />
+          </div>
+        )}
+
+        {activeTab === 'alerts' && (
+          <AlertsView 
+            onNavigateTab={setActiveTab}
+          />
+        )}
+
+        {activeTab === 'reports' && (
+          <ReportsView 
             activeField={activeField}
           />
+        )}
+
+        {activeTab === 'settings' && (
+          <SettingsView />
         )}
 
         {activeTab === 'guide' && (
           <FarmerGuide 
-            onLaunchDemo={() => setActiveTab('simulator')}
+            onLaunchDemo={() => setActiveTab('dashboard')}
           />
         )}
       </main>
