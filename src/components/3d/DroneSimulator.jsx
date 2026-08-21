@@ -14,7 +14,8 @@ import {
   Navigation, 
   Sparkles,
   Layers,
-  MapPin
+  MapPin,
+  Gamepad
 } from 'lucide-react';
 import { getCropConfig } from '../../data/cropConfig';
 import { generateMissionPlan, MISSION_TYPES } from '../../utils/missionPlanner';
@@ -31,11 +32,17 @@ export default function DroneSimulator({
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [cameraMode, setCameraMode] = useState('orbit'); // 'orbit', 'follow', 'pov', 'top'
   const [opMode, setOpMode] = useState('seeding'); // 'seeding', 'watering', 'pesticide', 'inspect'
+  
+  // Control Mode: 'auto' (GPS Waypoints) vs 'manual' (Manual RC Pilot)
+  const [controlMode, setControlMode] = useState('auto');
+  
   const [logs, setLogs] = useState([
     'System Initialized: KRISHI VIKAS Quadcopter Drone Ready',
     'GPS Lock established: 16 Satellites connected',
-    'Mission Planner synchronized with GPS Field Boundary.'
+    'Flight Mode: Autonomous GPS Mission Active.'
   ]);
+
+  const keysPressed = useRef({});
 
   const cropConfig = getCropConfig(activeField.crop);
 
@@ -64,7 +71,6 @@ export default function DroneSimulator({
   // Convert mission waypoints to THREE.Vector3 array
   const dynamicWaypoints = useMemo(() => {
     if (!mission || !mission.waypoints || mission.waypoints.length === 0) {
-      // Fallback 4 corner circuit
       return [
         new THREE.Vector3(-15, 3.5, -15),
         new THREE.Vector3(15, 3.5, -15),
@@ -92,8 +98,9 @@ export default function DroneSimulator({
     distanceTraveled: 0,
     lastSeedDistance: 0,
     seedsDropped: 0,
-    plants: [], // array of planted coordinate keys
+    plants: [],
     opMode: 'seeding',
+    controlMode: 'auto',
     isPlaying: true,
     speedMultiplier: 1,
     cameraMode: 'orbit',
@@ -104,16 +111,36 @@ export default function DroneSimulator({
   // Keep ref synchronized with React state
   useEffect(() => {
     flightStateRef.current.opMode = opMode;
+    flightStateRef.current.controlMode = controlMode;
     flightStateRef.current.isPlaying = isPlaying;
     flightStateRef.current.speedMultiplier = speedMultiplier;
     flightStateRef.current.cameraMode = cameraMode;
     flightStateRef.current.waypoints = dynamicWaypoints;
     flightStateRef.current.cropConfig = cropConfig;
-  }, [opMode, isPlaying, speedMultiplier, cameraMode, dynamicWaypoints, cropConfig]);
+  }, [opMode, controlMode, isPlaying, speedMultiplier, cameraMode, dynamicWaypoints, cropConfig]);
 
   const addLog = (msg) => {
     setLogs(prev => [msg, ...prev.slice(0, 7)]);
   };
+
+  // Keyboard Event Listeners for Manual RC Flight
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      keysPressed.current[e.key.toLowerCase()] = true;
+    };
+
+    const handleKeyUp = (e) => {
+      keysPressed.current[e.key.toLowerCase()] = false;
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
 
   // Setup Three.js WebGL Scene
   useEffect(() => {
@@ -182,7 +209,7 @@ export default function DroneSimulator({
     gridHelper.position.y = 0.02;
     scene.add(gridHelper);
 
-    // Boundary Group (Field perimeter and beacons)
+    // Boundary Group
     const boundaryGroup = new THREE.Group();
     scene.add(boundaryGroup);
     boundaryGroupRef.current = boundaryGroup;
@@ -210,7 +237,7 @@ export default function DroneSimulator({
     body.castShadow = true;
     droneGroup.add(body);
 
-    // Top Cover Shell (Carbon fiber look)
+    // Top Cover Shell
     const topShellGeo = new THREE.CylinderGeometry(0.7, 0.9, 0.3, 8);
     const topShellMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9, roughness: 0.1 });
     const topShell = new THREE.Mesh(topShellGeo, topShellMat);
@@ -218,7 +245,7 @@ export default function DroneSimulator({
     topShell.castShadow = true;
     droneGroup.add(topShell);
 
-    // Triple Payloads (Seeds hopper, Water tank, Pesticide tank)
+    // Payloads
     const waterTankGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.5, 12);
     const waterTankMat = new THREE.MeshPhysicalMaterial({
       color: 0x3b82f6,
@@ -244,7 +271,7 @@ export default function DroneSimulator({
     dropper.position.set(0, -0.6, 0);
     droneGroup.add(dropper);
 
-    // Downward LiDAR Scanning Cone
+    // LiDAR Laser Cone
     const laserGeo = new THREE.ConeGeometry(2.0, 4.0, 16, 1, true);
     const laserMat = new THREE.MeshBasicMaterial({
       color: 0x10b981,
@@ -293,18 +320,11 @@ export default function DroneSimulator({
 
       droneGroup.add(rotorGroup);
       rotorArray.push(rotorGroup);
-
-      const ledGeo = new THREE.SphereGeometry(0.08, 8, 8);
-      const ledColor = idx < 2 ? 0x10b981 : 0xef4444;
-      const ledMat = new THREE.MeshBasicMaterial({ color: ledColor });
-      const led = new THREE.Mesh(ledGeo, ledMat);
-      led.position.set(pos.x * 1.1, 0.1, pos.z * 1.1);
-      droneGroup.add(led);
     });
 
     rotorsRef.current = rotorArray;
 
-    // 7. Particle Systems for Water Mist & Pesticide Spray
+    // Particle Systems for Spray
     const waterPartCount = 180;
     const waterGeo = new THREE.BufferGeometry();
     const waterPos = new Float32Array(waterPartCount * 3);
@@ -314,12 +334,7 @@ export default function DroneSimulator({
       waterPos[i * 3 + 2] = (Math.random() - 0.5) * 1.2;
     }
     waterGeo.setAttribute('position', new THREE.BufferAttribute(waterPos, 3));
-    const waterMat = new THREE.PointsMaterial({
-      color: 0x60a5fa,
-      size: 0.15,
-      transparent: true,
-      opacity: 0.75
-    });
+    const waterMat = new THREE.PointsMaterial({ color: 0x60a5fa, size: 0.15, transparent: true, opacity: 0.75 });
     const waterParticles = new THREE.Points(waterGeo, waterMat);
     waterParticles.visible = false;
     droneGroup.add(waterParticles);
@@ -334,18 +349,13 @@ export default function DroneSimulator({
       pestPos[i * 3 + 2] = (Math.random() - 0.5) * 1.4;
     }
     pestGeo.setAttribute('position', new THREE.BufferAttribute(pestPos, 3));
-    const pestMat = new THREE.PointsMaterial({
-      color: 0xfacc15,
-      size: 0.18,
-      transparent: true,
-      opacity: 0.65
-    });
+    const pestMat = new THREE.PointsMaterial({ color: 0xfacc15, size: 0.18, transparent: true, opacity: 0.65 });
     const pesticideParticles = new THREE.Points(pestGeo, pestMat);
     pesticideParticles.visible = false;
     droneGroup.add(pesticideParticles);
     pesticideParticlesRef.current = pesticideParticles;
 
-    // 8. Orbit Drag / Mouse Interaction
+    // Camera Orbit Mouse Control
     let isDragging = false;
     let previousMousePosition = { x: 0, y: 0 };
     let cameraAngle = { polar: Math.PI / 4, azimuth: 0, distance: 50 };
@@ -359,20 +369,13 @@ export default function DroneSimulator({
       if (!isDragging) return;
       const deltaX = e.clientX - previousMousePosition.x;
       const deltaY = e.clientY - previousMousePosition.y;
-
       cameraAngle.azimuth -= deltaX * 0.005;
       cameraAngle.polar = Math.max(0.1, Math.min(Math.PI / 2.2, cameraAngle.polar - deltaY * 0.005));
-
       previousMousePosition = { x: e.clientX, y: e.clientY };
     };
 
-    const onMouseUp = () => {
-      isDragging = false;
-    };
-
-    const onWheel = (e) => {
-      cameraAngle.distance = Math.max(10, Math.min(120, cameraAngle.distance + e.deltaY * 0.04));
-    };
+    const onMouseUp = () => { isDragging = false; };
+    const onWheel = (e) => { cameraAngle.distance = Math.max(10, Math.min(120, cameraAngle.distance + e.deltaY * 0.04)); };
 
     const domElem = renderer.domElement;
     domElem.addEventListener('mousedown', onMouseDown);
@@ -380,7 +383,7 @@ export default function DroneSimulator({
     window.addEventListener('mouseup', onMouseUp);
     domElem.addEventListener('wheel', onWheel);
 
-    // 9. Animation Render Loop
+    // Animation Loop
     let clock = new THREE.Clock();
     let animFrameId;
 
@@ -394,17 +397,6 @@ export default function DroneSimulator({
       rotorsRef.current.forEach(r => {
         r.rotation.y += st.isPlaying ? 0.45 * st.speedMultiplier : 0.05;
       });
-
-      // Subtle drone hover wobble
-      if (droneGroupRef.current) {
-        const time = clock.getElapsedTime();
-        const baseAltitude = currentWPs[st.currentWaypointIndex]?.y || 3.5;
-        droneGroupRef.current.position.y = THREE.MathUtils.lerp(
-          droneGroupRef.current.position.y,
-          baseAltitude + Math.sin(time * 3) * 0.1,
-          0.05
-        );
-      }
 
       // Particle spray visibility
       if (waterParticlesRef.current) {
@@ -431,13 +423,88 @@ export default function DroneSimulator({
         }
       }
 
-      // Autonomous Flight along Dynamic GPS Mission Waypoints
-      if (st.isPlaying && currentWPs.length > 0 && droneGroupRef.current) {
+      // ==========================================
+      // 1. MANUAL RC FLIGHT MODE CONTROLS
+      // ==========================================
+      if (st.controlMode === 'manual' && droneGroupRef.current) {
+        const drone = droneGroupRef.current;
+        const speed = 8.0 * st.speedMultiplier * delta;
+        const yawSpeed = 1.8 * delta;
+        const keys = keysPressed.current;
+
+        let moved = false;
+
+        // Yaw Rotation (Turn Q/E)
+        if (keys['q']) { drone.rotation.y += yawSpeed; moved = true; }
+        if (keys['e']) { drone.rotation.y -= yawSpeed; moved = true; }
+
+        // Pitch & Roll Movement (WASD / Arrows)
+        const moveDir = new THREE.Vector3();
+        if (keys['w'] || keys['arrowup']) { moveDir.z -= 1; moved = true; }
+        if (keys['s'] || keys['arrowdown']) { moveDir.z += 1; moved = true; }
+        if (keys['a'] || keys['arrowleft']) { moveDir.x -= 1; moved = true; }
+        if (keys['d'] || keys['arrowright']) { moveDir.x += 1; moved = true; }
+
+        // Altitude Throttle (R/F or PageUp/PageDown)
+        if (keys['r'] || keys['pageup']) { drone.position.y = Math.min(30, drone.position.y + speed * 0.7); moved = true; }
+        if (keys['f'] || keys['pagedown']) { drone.position.y = Math.max(0.5, drone.position.y - speed * 0.7); moved = true; }
+
+        if (moveDir.length() > 0) {
+          moveDir.normalize();
+          moveDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), drone.rotation.y);
+          drone.position.x += moveDir.x * speed;
+          drone.position.z += moveDir.z * speed;
+          st.distanceTraveled += speed;
+
+          // Pitch tilt animation
+          drone.rotation.x = THREE.MathUtils.lerp(drone.rotation.x, -0.15, 0.1);
+        } else {
+          drone.rotation.x = THREE.MathUtils.lerp(drone.rotation.x, 0, 0.1);
+        }
+
+        // Manual Seeding Drop Trigger
+        if (moved && st.opMode === 'seeding') {
+          const plantX = Number(drone.position.x.toFixed(1));
+          const plantZ = Number(drone.position.z.toFixed(1));
+          const plantKey = `${plantX}_${plantZ}`;
+
+          if (!st.plants.includes(plantKey)) {
+            st.plants.push(plantKey);
+            const plantGroup = new THREE.Group();
+            plantGroup.position.set(plantX, 0, plantZ);
+
+            const moundGeo = new THREE.ConeGeometry(0.4, 0.2, 8);
+            const moundMat = new THREE.MeshStandardMaterial({ color: 0x3d1a04 });
+            const mound = new THREE.Mesh(moundGeo, moundMat);
+            mound.position.y = 0.08;
+            plantGroup.add(mound);
+
+            const stemGeo = new THREE.CylinderGeometry(0.03, 0.05, 0.5, 6);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x22c55e });
+            const stem = new THREE.Mesh(stemGeo, stemMat);
+            stem.position.y = 0.35;
+            plantGroup.add(stem);
+
+            if (plantsGroupRef.current) {
+              plantsGroupRef.current.add(plantGroup);
+            }
+
+            setDroneState(prev => ({
+              ...prev,
+              seedsCount: prev.seedsCount + 1,
+              distanceCovered: Math.round(st.distanceTraveled)
+            }));
+          }
+        }
+      } 
+      // ==========================================
+      // 2. AUTONOMOUS BUSTROPHEDON GPS MISSION MODE
+      // ==========================================
+      else if (st.controlMode === 'auto' && st.isPlaying && currentWPs.length > 0 && droneGroupRef.current) {
         const targetWP = currentWPs[st.currentWaypointIndex];
         const dronePos = droneGroupRef.current.position;
-
         const dir = new THREE.Vector3().subVectors(targetWP, dronePos);
-        dir.y = 0; // maintain level horizontal vector
+        dir.y = 0;
         const dist = dir.length();
 
         if (dist > 0.3) {
@@ -446,66 +513,41 @@ export default function DroneSimulator({
           droneGroupRef.current.position.x += dir.x * speed;
           droneGroupRef.current.position.z += dir.z * speed;
 
-          // Face movement heading
           const targetAngle = Math.atan2(dir.x, dir.z);
           droneGroupRef.current.rotation.y = THREE.MathUtils.lerp(droneGroupRef.current.rotation.y, targetAngle, 0.1);
-
-          // Distance tracking
           st.distanceTraveled += speed;
 
-          // Crop-Specific Seeding Interval Trigger (in meters)
           const seedSpacingStep = Math.max(0.5, (st.cropConfig?.plantSpacing || 0.2) * 3.5);
           if (st.opMode === 'seeding' && st.distanceTraveled - st.lastSeedDistance >= seedSpacingStep) {
             st.lastSeedDistance = st.distanceTraveled;
             st.seedsDropped += 1;
 
-            // Spawn 3D Crop Plant at ground coordinate
             const plantX = Number(dronePos.x.toFixed(1));
             const plantZ = Number(dronePos.z.toFixed(1));
             const plantKey = `${plantX}_${plantZ}`;
 
             if (!st.plants.includes(plantKey)) {
               st.plants.push(plantKey);
-
               const plantGroup = new THREE.Group();
               plantGroup.position.set(plantX, 0, plantZ);
 
-              // Soil mound
               const moundGeo = new THREE.ConeGeometry(0.4, 0.2, 8);
               const moundMat = new THREE.MeshStandardMaterial({ color: 0x3d1a04 });
               const mound = new THREE.Mesh(moundGeo, moundMat);
               mound.position.y = 0.08;
               plantGroup.add(mound);
 
-              // Stem & Sprout
               const stemGeo = new THREE.CylinderGeometry(0.03, 0.05, 0.5, 6);
-              const stemMat = new THREE.MeshStandardMaterial({ 
-                color: st.cropConfig?.stemColor || 0x22c55e 
-              });
+              const stemMat = new THREE.MeshStandardMaterial({ color: 0x22c55e });
               const stem = new THREE.Mesh(stemGeo, stemMat);
               stem.position.y = 0.35;
               plantGroup.add(stem);
-
-              const leafGeo = new THREE.SphereGeometry(0.2, 8, 8);
-              leafGeo.scale(1.4, 0.3, 0.7);
-              const leafMat = new THREE.MeshStandardMaterial({ 
-                color: st.cropConfig?.leafColor || 0x4ade80 
-              });
-              const leaf1 = new THREE.Mesh(leafGeo, leafMat);
-              leaf1.position.set(0.12, 0.5, 0);
-              leaf1.rotation.z = -0.4;
-              const leaf2 = new THREE.Mesh(leafGeo, leafMat);
-              leaf2.position.set(-0.12, 0.5, 0);
-              leaf2.rotation.z = 0.4;
-              plantGroup.add(leaf1);
-              plantGroup.add(leaf2);
 
               if (plantsGroupRef.current) {
                 plantsGroupRef.current.add(plantGroup);
               }
             }
 
-            // Sync with React parent telemetry
             setDroneState(prev => ({
               ...prev,
               seedsCount: prev.seedsCount + 1,
@@ -515,23 +557,7 @@ export default function DroneSimulator({
             }));
           }
 
-          // Resource consumption for water / pesticide
-          if (st.opMode === 'watering') {
-            setDroneState(prev => ({
-              ...prev,
-              waterLevel: Math.max(0, prev.waterLevel - 0.04),
-              battery: Math.max(10, prev.battery - 0.06)
-            }));
-          } else if (st.opMode === 'pesticide') {
-            setDroneState(prev => ({
-              ...prev,
-              pesticideLevel: Math.max(0, prev.pesticideLevel - 0.03),
-              battery: Math.max(10, prev.battery - 0.06)
-            }));
-          }
-
         } else {
-          // Reached waypoint, advance sequence
           st.currentWaypointIndex = (st.currentWaypointIndex + 1) % currentWPs.length;
           addLog(`Reached WP #${st.currentWaypointIndex + 1} (${currentWPs[st.currentWaypointIndex].x.toFixed(1)}m, ${currentWPs[st.currentWaypointIndex].z.toFixed(1)}m)`);
         }
@@ -546,18 +572,15 @@ export default function DroneSimulator({
           camera.position.y = dPos.y + cameraAngle.distance * Math.cos(cameraAngle.polar);
           camera.position.z = dPos.z + cameraAngle.distance * Math.sin(cameraAngle.polar) * Math.cos(cameraAngle.azimuth);
           camera.lookAt(dPos);
-
         } else if (st.cameraMode === 'follow') {
           const backOffset = new THREE.Vector3(0, 4.5, 10).applyAxisAngle(new THREE.Vector3(0, 1, 0), droneGroupRef.current.rotation.y);
           camera.position.copy(dPos).add(backOffset);
           camera.lookAt(dPos.x, dPos.y + 1, dPos.z);
-
         } else if (st.cameraMode === 'pov') {
           const frontOffset = new THREE.Vector3(0, 0.4, -0.6).applyAxisAngle(new THREE.Vector3(0, 1, 0), droneGroupRef.current.rotation.y);
           camera.position.copy(dPos).add(frontOffset);
           const targetAhead = new THREE.Vector3(0, 0, -10).applyAxisAngle(new THREE.Vector3(0, 1, 0), droneGroupRef.current.rotation.y);
           camera.lookAt(dPos.clone().add(targetAhead));
-
         } else if (st.cameraMode === 'top') {
           camera.position.set(dPos.x, dPos.y + 40, dPos.z + 0.1);
           camera.lookAt(dPos);
@@ -590,47 +613,32 @@ export default function DroneSimulator({
     };
   }, []);
 
-  // Update Dynamic 3D Field Perimeter & Boundary Markers when active field / mission changes
+  // Update 3D Field Perimeter Line & Beacons
   useEffect(() => {
     if (!boundaryGroupRef.current || !mission || !mission.localPolygon) return;
     const group = boundaryGroupRef.current;
-
-    // Clear previous boundary markers
-    while (group.children.length > 0) {
-      group.remove(group.children[0]);
-    }
-
+    while (group.children.length > 0) { group.remove(group.children[0]); }
     const { localPolygon } = mission;
 
-    // 1. Draw 3D Boundary Perimeter Line
     const linePts = localPolygon.map(pt => new THREE.Vector3(pt.x, 0.05, pt.z));
-    linePts.push(linePts[0]); // close loop
+    linePts.push(linePts[0]);
     const lineGeo = new THREE.BufferGeometry().setFromPoints(linePts);
     const lineMat = new THREE.LineBasicMaterial({ color: 0x10b981, linewidth: 2 });
-    const perimeterLine = new THREE.Line(lineGeo, lineMat);
-    group.add(perimeterLine);
+    group.add(new THREE.Line(lineGeo, lineMat));
 
-    // 2. Draw GPS Vertex Flagpoles & Glowing Beacons at Polygon Corners
-    localPolygon.forEach((pt, idx) => {
+    localPolygon.forEach((pt) => {
       const poleGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.8, 8);
       const poleMat = new THREE.MeshStandardMaterial({ color: 0x64748b });
       const pole = new THREE.Mesh(poleGeo, poleMat);
       pole.position.set(pt.x, 0.9, pt.z);
-      pole.castShadow = true;
+      group.add(pole);
 
       const bulbGeo = new THREE.SphereGeometry(0.3, 12, 12);
-      const bulbMat = new THREE.MeshStandardMaterial({
-        color: 0xeab308,
-        emissive: 0xca8a04,
-        emissiveIntensity: 0.8
-      });
+      const bulbMat = new THREE.MeshStandardMaterial({ color: 0xeab308, emissive: 0xca8a04, emissiveIntensity: 0.8 });
       const bulb = new THREE.Mesh(bulbGeo, bulbMat);
       bulb.position.set(pt.x, 1.9, pt.z);
-
-      group.add(pole);
       group.add(bulb);
     });
-
   }, [mission]);
 
   const resetSimulation = () => {
@@ -659,7 +667,12 @@ export default function DroneSimulator({
       battery: 100,
       distanceCovered: 0
     }));
-    addLog('Simulation Reset: Drone returned to Waypoint #1. Tanks refilled.');
+    addLog('Simulation Reset: Drone returned to Waypoint #1.');
+  };
+
+  // Helper trigger for manual joystick buttons
+  const triggerManualAction = (key, press = true) => {
+    keysPressed.current[key.toLowerCase()] = press;
   };
 
   return (
@@ -673,7 +686,7 @@ export default function DroneSimulator({
         <div className="gcs-panel px-4 py-2.5 rounded-xl border border-slate-800 flex items-center space-x-3 pointer-events-auto shadow-2xl">
           <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
           <div>
-            <div className="text-[10px] text-slate-400 font-mono font-medium uppercase">3D WebGL Autonomous Viewport</div>
+            <div className="text-[10px] text-slate-400 font-mono font-medium uppercase">3D WebGL Viewport</div>
             <div className="text-xs font-bold text-white flex items-center space-x-2">
               <span>{activeField.name}</span>
               <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -683,34 +696,104 @@ export default function DroneSimulator({
           </div>
         </div>
 
-        {/* Dynamic Mode & Crop Spacing Indicator */}
-        <div className="gcs-panel px-3 py-1.5 rounded-lg border border-slate-800 flex items-center space-x-2 text-xs pointer-events-auto">
-          <span className="text-slate-400 text-[11px]">Mode:</span>
-          <span className="font-semibold text-emerald-400 text-[11px] capitalize flex items-center space-x-1">
-            {opMode === 'seeding' && <Sprout className="w-3.5 h-3.5 text-emerald-400" />}
-            {opMode === 'watering' && <Droplets className="w-3.5 h-3.5 text-blue-400" />}
-            {opMode === 'pesticide' && <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />}
-            {opMode === 'inspect' && <Eye className="w-3.5 h-3.5 text-cyan-400" />}
-            <span>{opMode} (Row: {cropConfig.rowSpacing}m / Plant: {cropConfig.plantSpacing}m)</span>
-          </span>
+        {/* Control Mode Switcher Pill */}
+        <div className="gcs-panel p-1 rounded-xl border border-slate-800 flex items-center space-x-1 pointer-events-auto shadow-2xl">
+          <button
+            onClick={() => {
+              setControlMode('auto');
+              addLog('Flight Mode Switched: Autonomous GPS Waypoint Mode');
+            }}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+              controlMode === 'auto'
+                ? 'bg-emerald-500 text-slate-950 shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Navigation className="w-3.5 h-3.5" />
+            <span>GPS Auto</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setControlMode('manual');
+              addLog('Flight Mode Switched: Manual Pilot RC Joystick Mode (WASD / D-Pad Active)');
+            }}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+              controlMode === 'manual'
+                ? 'bg-amber-500 text-slate-950 shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Gamepad className="w-3.5 h-3.5" />
+            <span>Manual RC</span>
+          </button>
         </div>
       </div>
 
+      {/* Manual RC Pilot D-Pad & Keyboard Controls HUD (Shown in Manual Mode) */}
+      {controlMode === 'manual' && (
+        <div className="absolute top-20 left-4 z-20 gcs-panel p-3 rounded-2xl border border-amber-500/40 w-64 space-y-2 shadow-2xl text-xs">
+          <div className="flex items-center justify-between text-amber-400 font-bold border-b border-slate-800 pb-1.5">
+            <span className="flex items-center gap-1">
+              <Gamepad className="w-4 h-4" />
+              <span>Manual RC Controls</span>
+            </span>
+            <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-mono">WASD / D-Pad</span>
+          </div>
+
+          <div className="text-[11px] text-slate-300 leading-snug font-mono">
+            <div>• <strong className="text-amber-300">W/S/A/D</strong>: Pitch &amp; Roll</div>
+            <div>• <strong className="text-amber-300">Q/E</strong>: Yaw Rotate Left/Right</div>
+            <div>• <strong className="text-amber-300">R/F</strong>: Throttle Altitude Up/Down</div>
+          </div>
+
+          {/* Interactive Touch/Mouse D-Pad Joystick Overlay */}
+          <div className="grid grid-cols-3 gap-1.5 pt-1">
+            <div />
+            <button
+              onMouseDown={() => triggerManualAction('w', true)}
+              onMouseUp={() => triggerManualAction('w', false)}
+              className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:bg-amber-500/20 text-amber-400 font-bold text-center active:scale-95"
+            >
+              ▲ W
+            </button>
+            <div />
+            <button
+              onMouseDown={() => triggerManualAction('a', true)}
+              onMouseUp={() => triggerManualAction('a', false)}
+              className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:bg-amber-500/20 text-amber-400 font-bold text-center active:scale-95"
+            >
+              ◀ A
+            </button>
+            <button
+              onMouseDown={() => triggerManualAction('s', true)}
+              onMouseUp={() => triggerManualAction('s', false)}
+              className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:bg-amber-500/20 text-amber-400 font-bold text-center active:scale-95"
+            >
+              ▼ S
+            </button>
+            <button
+              onMouseDown={() => triggerManualAction('d', true)}
+              onMouseUp={() => triggerManualAction('d', false)}
+              className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:bg-amber-500/20 text-amber-400 font-bold text-center active:scale-95"
+            >
+              D ▶
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Right Controls Overlay: Camera & Operations Selector */}
       <div className="absolute top-4 right-4 z-20 flex flex-col items-end space-y-2.5">
-        
-        {/* Operations Selector Card */}
         <div className="gcs-panel p-2 rounded-xl border border-slate-800 flex flex-col space-y-1 w-48 shadow-2xl">
           <div className="text-[10px] font-mono font-bold text-slate-400 px-2 py-0.5 uppercase tracking-wider">
-            Flight Mode
+            Flight Operation
           </div>
 
           <button
             onClick={() => { setOpMode('seeding'); addLog(`Switched to ${cropConfig.name} Seeding Mode`); }}
             className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              opMode === 'seeding'
-                ? 'bg-emerald-500 text-slate-950 shadow-md'
-                : 'text-slate-300 hover:bg-slate-800/60'
+              opMode === 'seeding' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-300 hover:bg-slate-800/60'
             }`}
           >
             <Sprout className="w-3.5 h-3.5" />
@@ -720,9 +803,7 @@ export default function DroneSimulator({
           <button
             onClick={() => { setOpMode('watering'); addLog('Switched to Water Irrigation Mist Mode'); }}
             className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              opMode === 'watering'
-                ? 'bg-blue-500 text-white shadow-md'
-                : 'text-slate-300 hover:bg-slate-800/60'
+              opMode === 'watering' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800/60'
             }`}
           >
             <Droplets className="w-3.5 h-3.5" />
@@ -732,9 +813,7 @@ export default function DroneSimulator({
           <button
             onClick={() => { setOpMode('pesticide'); addLog('Switched to Pesticide Protection Spray Mode'); }}
             className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              opMode === 'pesticide'
-                ? 'bg-amber-500 text-slate-950 shadow-md'
-                : 'text-slate-300 hover:bg-slate-800/60'
+              opMode === 'pesticide' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-300 hover:bg-slate-800/60'
             }`}
           >
             <ShieldAlert className="w-3.5 h-3.5" />
@@ -744,9 +823,7 @@ export default function DroneSimulator({
           <button
             onClick={() => { setOpMode('inspect'); addLog('Switched to LiDAR Field Inspection Mode'); }}
             className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              opMode === 'inspect'
-                ? 'bg-cyan-500 text-slate-950 shadow-md'
-                : 'text-slate-300 hover:bg-slate-800/60'
+              opMode === 'inspect' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-300 hover:bg-slate-800/60'
             }`}
           >
             <Eye className="w-3.5 h-3.5" />
@@ -790,15 +867,11 @@ export default function DroneSimulator({
             Top Grid
           </button>
         </div>
-
       </div>
 
-      {/* Bottom Center Playback HUD & Live Telemetry Gauge */}
+      {/* Bottom Center Playback HUD */}
       <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center space-y-3 w-full max-w-2xl px-4">
-        
         <div className="glass-panel w-full p-3.5 rounded-2xl border border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
-          
-          {/* Main Flight Commands: Play/Pause, Takeoff, RTH, Land, Speed, Reset */}
           <div className="flex items-center space-x-2 flex-wrap gap-y-2">
             <button
               onClick={() => {
@@ -817,7 +890,7 @@ export default function DroneSimulator({
               onClick={() => {
                 setIsPlaying(true);
                 flightStateRef.current.currentWaypointIndex = 0;
-                addLog('Command Sent: Takeoff Initiated to Waypoint #1');
+                addLog('Command Sent: Takeoff Initiated');
               }}
               className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30 text-xs font-bold transition-all"
             >
@@ -853,7 +926,6 @@ export default function DroneSimulator({
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
 
-            {/* Speed Multiplier Button */}
             <button
               onClick={() => {
                 const nextSpeed = speedMultiplier === 1 ? 2 : speedMultiplier === 2 ? 5 : 1;
@@ -866,7 +938,6 @@ export default function DroneSimulator({
             </button>
           </div>
 
-          {/* Key Telemetry Stats */}
           <div className="grid grid-cols-4 gap-3 w-full md:w-auto text-center border-t md:border-t-0 md:border-l border-slate-800 pt-3 md:pt-0 md:pl-4">
             <div>
               <div className="text-[10px] text-slate-400 font-semibold uppercase">Seeds Planted</div>
@@ -900,9 +971,7 @@ export default function DroneSimulator({
               </div>
             </div>
           </div>
-
         </div>
-
       </div>
 
       {/* Bottom Left Live Console Logs Overlay */}
@@ -913,7 +982,7 @@ export default function DroneSimulator({
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
               <span>Telemetry Flight Log</span>
             </span>
-            <span className="text-[10px] text-emerald-400">GPS MISSION ACTIVE</span>
+            <span className="text-[10px] text-emerald-400 uppercase">{controlMode} MODE</span>
           </div>
           <div className="space-y-1 max-h-28 overflow-y-auto pr-1">
             {logs.map((log, index) => (
