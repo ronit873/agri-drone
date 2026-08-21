@@ -266,6 +266,24 @@ export default function MissionPlanner({
     a.click();
   };
 
+  // Export QGroundControl / Pixhawk Hardware Format (.waypoints WPL 110)
+  const handleExportWpl110 = () => {
+    if (!missionPlan || !missionPlan.waypoints) return;
+    let wpl = 'QGC WPL 110\n';
+    missionPlan.waypoints.forEach((wp, index) => {
+      const isHome = index === 0 ? 1 : 0;
+      const cmd = wp.type === 'TAKEOFF' ? 22 : wp.type === 'RTH' ? 20 : wp.type === 'LAND' ? 21 : 16;
+      wpl += `${index}\t${isHome}\t3\t${cmd}\t0.000000\t0.000000\t0.000000\t0.000000\t${wp.latitude.toFixed(7)}\t${wp.longitude.toFixed(7)}\t${wp.altitude.toFixed(2)}\t1\n`;
+    });
+
+    const blob = new Blob([wpl], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${activeField.name.replace(/\s+/g, '_')}_Pixhawk_QGC.waypoints`;
+    a.click();
+  };
+
   const resetToCropDefaults = () => {
     const cfg = getCropConfig(selectedCropId);
     setCustomParams({
@@ -365,10 +383,19 @@ export default function MissionPlanner({
 
               <div className="flex items-center space-x-2">
                 <button
+                  onClick={handleExportWpl110}
+                  disabled={!missionPlan}
+                  className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[11px] font-bold hover:bg-emerald-500/30 disabled:opacity-50"
+                  title="Download Pixhawk / ArduPilot QGC .waypoints file"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>QGC (.waypoints)</span>
+                </button>
+                <button
                   onClick={handleExportCsv}
                   disabled={!missionPlan}
                   className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-50"
-                  title="Download QGC / Mission Planner CSV"
+                  title="Download CSV Waypoints"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>CSV</span>

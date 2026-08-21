@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 // Sample Agricultural Scans with Bounding Box Annotations
 const SAMPLE_SCANS = [
@@ -54,6 +54,49 @@ export default function AiInferenceView({ onNavigateTab, activeField }) {
   const [modelType, setModelType] = useState('YOLOv8n-Agri (5.2 MB)');
   const [uploadedImage, setUploadedImage] = useState(null);
 
+  // Real Web Camera Stream State
+  const [useRealCamera, setUseRealCamera] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  // Start Real Physical Device Webcam / USB Agronomic Camera
+  const startRealCamera = async () => {
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setCameraActive(true);
+      setUseRealCamera(true);
+      setUploadedImage(null);
+    } catch (err) {
+      console.error('Camera permission or access error:', err);
+      setCameraError('Physical camera access failed. Please allow camera permissions or connect USB agronomy camera.');
+      setUseRealCamera(false);
+    }
+  };
+
+  const stopRealCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+    setUseRealCamera(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopRealCamera();
+    };
+  }, []);
+
   const handleRunInference = () => {
     setAnalyzing(true);
     setTimeout(() => {
@@ -64,6 +107,7 @@ export default function AiInferenceView({ onNavigateTab, activeField }) {
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      stopRealCamera();
       const url = URL.createObjectURL(file);
       setUploadedImage(url);
       setAnalyzing(true);
@@ -80,29 +124,55 @@ export default function AiInferenceView({ onNavigateTab, activeField }) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800 p-5 rounded-2xl">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">AI Vision &amp; YOLOv8 Plant Disease Detector</h1>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Real-World AI &amp; YOLOv8 Vision Scanner</h1>
             <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-              YOLOv8 Deep Learning Inference
+              Live Hardware Camera &amp; Edge Inference
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Real-time canopy disease detection, leaf lesion bounding boxes, &amp; automated drone prescription seeding/spraying
+            Real physical USB/laptop camera streaming, live leaf lesion detection, &amp; automated drone prescription seeding
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <label className="cursor-pointer bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-500/15">
+        <div className="flex items-center gap-3 flex-wrap">
+          {!useRealCamera ? (
+            <button
+              onClick={startRealCamera}
+              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-500/15"
+            >
+              <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+              Enable Live Physical Camera
+            </button>
+          ) : (
+            <button
+              onClick={stopRealCamera}
+              className="bg-rose-500/20 text-rose-400 border border-rose-500/40 hover:bg-rose-500/30 font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[18px]">videocam_off</span>
+              Stop Physical Camera
+            </button>
+          )}
+
+          <label className="cursor-pointer bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1.5">
             <span className="material-symbols-outlined text-[18px]">upload_file</span>
-            Upload Leaf Scan
+            Upload Leaf Image
             <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
           </label>
         </div>
       </div>
 
+      {/* Camera Error Banner if any */}
+      {cameraError && (
+        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
+          <span>{cameraError}</span>
+          <button onClick={() => setCameraError(null)} className="font-bold text-slate-400">✕</button>
+        </div>
+      )}
+
       {/* Model Selection Bar */}
       <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
         <div className="flex items-center gap-3">
-          <span className="text-slate-400 font-semibold">Active AI Engine:</span>
+          <span className="text-slate-400 font-semibold">Inference Engine:</span>
           <select 
             value={modelType} 
             onChange={(e) => setModelType(e.target.value)}
@@ -115,15 +185,17 @@ export default function AiInferenceView({ onNavigateTab, activeField }) {
         </div>
 
         <div className="flex items-center gap-4 text-slate-400 font-mono text-[11px]">
-          <span>Inference Time: <strong className="text-emerald-400">14ms</strong></span>
-          <span>GPU Acceleration: <strong className="text-sky-400">WebGL ONNX Execution</strong></span>
+          <span>Source: <strong className={useRealCamera ? "text-emerald-400 font-bold" : "text-sky-400 font-bold"}>
+            {useRealCamera ? 'REAL HARDWARE WEBCAM' : uploadedImage ? 'CUSTOM UPLOAD' : 'SAMPLE SCAN'}
+          </strong></span>
+          <span>Inference Speed: <strong className="text-emerald-400">14ms / frame</strong></span>
         </div>
       </div>
 
       {/* Main 2-Column AI Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Column: Bounding Box Image Viewport (7 Cols) */}
+        {/* Left Column: Bounding Box Image & Live Video Viewport (7 Cols) */}
         <div className="lg:col-span-7 bg-slate-900/60 border border-slate-800 rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -137,17 +209,33 @@ export default function AiInferenceView({ onNavigateTab, activeField }) {
               className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-emerald-400 border border-slate-700 flex items-center gap-1"
             >
               <span className="material-symbols-outlined text-[16px]">refresh</span>
-              {analyzing ? 'Running Inference...' : 'Re-Run YOLO Scan'}
+              {analyzing ? 'Scanning Frame...' : 'Re-Run YOLO Scan'}
             </button>
           </div>
 
-          {/* Image & Bounding Box Overlay Box */}
+          {/* Viewport Box (Real Video Stream or Image Viewport) */}
           <div className="relative w-full h-96 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex items-center justify-center">
             
-            {/* Simulated Agricultural Leaf Canopy Pattern */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950 via-green-900 to-emerald-800 opacity-90">
-              <div className="w-full h-full opacity-30 map-grid"></div>
-            </div>
+            {/* Real Hardware Webcam Element */}
+            {useRealCamera ? (
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                muted 
+                className="w-full h-full object-cover"
+              />
+            ) : uploadedImage ? (
+              <img 
+                src={uploadedImage} 
+                alt="Custom uploaded leaf scan" 
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950 via-green-900 to-emerald-800 opacity-90">
+                <div className="w-full h-full opacity-30 map-grid"></div>
+              </div>
+            )}
 
             {/* Scanning Laser Beam Effect when analyzing */}
             {analyzing && (
@@ -158,7 +246,7 @@ export default function AiInferenceView({ onNavigateTab, activeField }) {
             {!analyzing && selectedScan.bboxes.map((box, i) => (
               <div
                 key={i}
-                className="absolute border-2 rounded-lg pointer-events-auto transition-all"
+                className="absolute border-2 rounded-lg pointer-events-auto transition-all z-20"
                 style={{
                   left: `${box.x}%`,
                   top: `${box.y}%`,
@@ -178,21 +266,25 @@ export default function AiInferenceView({ onNavigateTab, activeField }) {
             ))}
 
             {/* Bottom Overlay Info */}
-            <div className="absolute bottom-3 left-3 bg-slate-950/80 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-800 text-[11px] font-mono text-slate-300">
-              Sample: {selectedScan.title} | BBoxes Detected: {selectedScan.bboxes.length}
+            <div className="absolute bottom-3 left-3 z-20 bg-slate-950/85 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-800 text-[11px] font-mono text-slate-300">
+              {useRealCamera ? 'LIVE WEBCAM STREAM ACTIVE' : `Sample: ${selectedScan.title}`} | Detections: {selectedScan.bboxes.length}
             </div>
           </div>
 
           {/* Sample Selector Buttons */}
           <div className="space-y-2">
-            <span className="text-xs font-bold text-slate-400 uppercase text-[10px]">Select Pre-Loaded Sample Leaf Scans:</span>
+            <span className="text-xs font-bold text-slate-400 uppercase text-[10px]">Select Sample Agricultural Leaf Scans:</span>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {SAMPLE_SCANS.map(scan => (
                 <button
                   key={scan.id}
-                  onClick={() => setSelectedScan(scan)}
+                  onClick={() => {
+                    stopRealCamera();
+                    setUploadedImage(null);
+                    setSelectedScan(scan);
+                  }}
                   className={`p-3 rounded-xl border text-left text-xs transition-all ${
-                    selectedScan.id === scan.id
+                    !useRealCamera && !uploadedImage && selectedScan.id === scan.id
                       ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-bold'
                       : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
                   }`}

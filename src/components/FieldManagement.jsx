@@ -407,11 +407,41 @@ export default function FieldManagement({
                 </div>
               </div>
 
-              {/* Polygon Vertices Editor */}
+              {/* Polygon Vertices Editor with Real Device GPS Geolocation */}
               <div className="border-t border-slate-800 pt-3 space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="font-bold text-white">GPS Vertices (Min 3)</span>
-                  <button type="button" onClick={handleAddVertex} className="text-emerald-400 font-bold">+ Add Vertex</button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if ('geolocation' in navigator) {
+                          navigator.geolocation.getCurrentPosition((pos) => {
+                            const lat = pos.coords.latitude;
+                            const lng = pos.coords.longitude;
+                            setNewField(prev => ({
+                              ...prev,
+                              boundary: [
+                                { latitude: lat + 0.0003, longitude: lng - 0.0003 },
+                                { latitude: lat + 0.0003, longitude: lng + 0.0003 },
+                                { latitude: lat - 0.0003, longitude: lng + 0.0003 },
+                                { latitude: lat - 0.0003, longitude: lng - 0.0003 }
+                              ]
+                            }));
+                          }, (err) => {
+                            alert('GPS Geolocation Error: ' + err.message);
+                          });
+                        } else {
+                          alert('Geolocation API is not supported in this browser.');
+                        }
+                      }}
+                      className="text-sky-400 hover:text-sky-300 font-bold flex items-center gap-1 text-[11px]"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">my_location</span>
+                      Use My Real GPS Location
+                    </button>
+                    <button type="button" onClick={handleAddVertex} className="text-emerald-400 font-bold text-[11px]">+ Add Vertex</button>
+                  </div>
                 </div>
 
                 <div className="space-y-2 max-h-36 overflow-y-auto">
