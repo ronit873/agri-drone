@@ -4,6 +4,7 @@ import DashboardView from './components/DashboardView';
 import DroneSimulator from './components/3d/DroneSimulator';
 import MissionPlanner from './components/MissionPlanner';
 import FieldManagement from './components/FieldManagement';
+import AiInferenceView from './components/AiInferenceView';
 import PlantHealthView from './components/PlantHealthView';
 import AlertsView from './components/AlertsView';
 import ReportsView from './components/ReportsView';
@@ -220,6 +221,14 @@ export default function App() {
               theme={theme}
             />
           </div>
+        )}
+
+        {activeTab === 'ai_vision' && (
+          <AiInferenceView 
+            onNavigateTab={setActiveTab}
+            activeField={activeField}
+            theme={theme}
+          />
         )}
 
         {activeTab === 'plant_health' && (

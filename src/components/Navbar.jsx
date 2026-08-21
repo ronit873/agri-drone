@@ -8,6 +8,7 @@ export default function Navbar({ activeTab, setActiveTab, droneState, activeFiel
     { id: 'fields', label: 'Fields & Boundaries', icon: 'potted_plant' },
     { id: 'missions', label: 'Mission Planner', icon: 'flight_takeoff' },
     { id: 'drone', label: 'Drone Control (3D)', icon: 'flight' },
+    { id: 'ai_vision', label: 'AI Vision (YOLOv8)', icon: 'document_scanner' },
     { id: 'plant_health', label: 'Plant Health', icon: 'health_metrics' },
     { id: 'alerts', label: 'Alert Center', icon: 'notifications' },
     { id: 'reports', label: 'Flight Reports', icon: 'analytics' },
