@@ -8,9 +8,6 @@ import PlantHealthView from './components/PlantHealthView';
 import AlertsView from './components/AlertsView';
 import ReportsView from './components/ReportsView';
 import SettingsView from './components/SettingsView';
-import TelemetryHUD from './components/TelemetryHUD';
-import AnalyticsDashboard from './components/AnalyticsDashboard';
-import FarmerGuide from './components/FarmerGuide';
 
 // Initial Registered Fields with real GPS Polygon Boundaries
 const INITIAL_FIELDS = [
@@ -95,9 +92,30 @@ const INITIAL_FIELDS = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('overview');
 
-  // Load fields with LocalStorage fallback for Phase I persistence
+  // Day / Night Theme State ('dark' or 'light')
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('krishi_vikas_theme') || 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    }
+    localStorage.setItem('krishi_vikas_theme', theme);
+  }, [theme]);
+
+  // Toggle Day & Night Mode function
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  // Load fields with LocalStorage fallback
   const [fields, setFields] = useState(() => {
     try {
       const saved = localStorage.getItem('krishi_vikas_fields');
@@ -114,7 +132,7 @@ export default function App() {
   const [activeField, setActiveField] = useState(fields[0]);
   const [activeMission, setActiveMission] = useState(null);
 
-  // Global Simulated Telemetry State
+  // Global Telemetry State
   const [droneState, setDroneState] = useState({
     battery: 94,
     seedsTank: 85,
@@ -125,7 +143,7 @@ export default function App() {
     status: 'In-Flight (GPS Mission Mode)'
   });
 
-  // Keep activeField reference aligned with fields array
+  // Keep activeField reference aligned
   useEffect(() => {
     const found = fields.find(f => f.id === activeField.id);
     if (found) {
@@ -139,38 +157,34 @@ export default function App() {
     if (generatedPlan) {
       setActiveMission(generatedPlan);
     }
-    setActiveTab('dashboard');
+    setActiveTab('overview');
   };
 
   return (
-    <div className="min-h-screen bg-surface text-on-surface font-sans flex flex-col antialiased">
+    <div className={`min-h-screen font-sans flex flex-col antialiased transition-colors duration-300 ${
+      theme === 'light' ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'
+    }`}>
       
-      {/* Top Header & Left Navigation Sidebar */}
+      {/* Navigation Shell: Left Sidebar & Header Bar */}
       <Navbar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         droneState={droneState}
         activeField={activeField}
+        theme={theme}
+        toggleTheme={toggleTheme}
       />
 
-      {/* Main View Workspace */}
-      <main className="flex-1 md:pl-[280px]">
-        {activeTab === 'dashboard' && (
+      {/* Main GCS Workspace Viewport */}
+      <main className="flex-1 lg:pl-[260px]">
+        {(activeTab === 'overview' || activeTab === 'dashboard') && (
           <DashboardView 
             droneState={droneState}
             setDroneState={setDroneState}
             activeField={activeField}
             activeMission={activeMission}
             onNavigateTab={setActiveTab}
-          />
-        )}
-
-        {(activeTab === 'missions' || activeTab === 'planner') && (
-          <MissionPlanner
-            activeField={activeField}
-            activeMission={activeMission}
-            onDeployToSimulator={handleDeployToSimulator}
-            onUpdateFieldPlan={(plan) => setActiveMission(plan)}
+            theme={theme}
           />
         )}
 
@@ -180,68 +194,59 @@ export default function App() {
             setFields={setFields}
             activeField={activeField}
             setActiveField={setActiveField}
-            onDeployDrone={() => setActiveTab('dashboard')}
+            onDeployDrone={() => setActiveTab('drone')}
             onPlanMission={() => setActiveTab('missions')}
+            theme={theme}
           />
+        )}
+
+        {(activeTab === 'missions' || activeTab === 'planner') && (
+          <MissionPlanner
+            activeField={activeField}
+            activeMission={activeMission}
+            onDeployToSimulator={handleDeployToSimulator}
+            onUpdateFieldPlan={(plan) => setActiveMission(plan)}
+            theme={theme}
+          />
+        )}
+
+        {(activeTab === 'drone' || activeTab === 'simulator') && (
+          <div className="w-full h-full relative">
+            <DroneSimulator 
+              droneState={droneState}
+              setDroneState={setDroneState}
+              activeField={activeField}
+              activeMission={activeMission}
+              theme={theme}
+            />
+          </div>
         )}
 
         {activeTab === 'plant_health' && (
           <PlantHealthView 
             activeField={activeField}
+            theme={theme}
           />
-        )}
-
-        {(activeTab === 'tracking' || activeTab === 'simulator') && (
-          <div className="p-gutter max-w-[1600px] mx-auto flex flex-col gap-4">
-            <div className="flex justify-between items-center bg-surface-container-lowest p-4 rounded-xl border border-outline-variant">
-              <div>
-                <h1 className="text-headline-md font-bold text-on-surface">Full-Screen 3D WebGL Flight Tracking</h1>
-                <p className="text-label-sm text-on-surface-variant">Live telemetry and quadcopter autonomous controls</p>
-              </div>
-              <button 
-                onClick={() => setActiveTab('dashboard')}
-                className="border border-outline-variant hover:bg-surface-container-low px-4 py-2 rounded-lg text-label-md font-semibold"
-              >
-                Back to Bento Dashboard
-              </button>
-            </div>
-            
-            <div className="h-[680px] rounded-xl overflow-hidden border border-outline-variant shadow-sm relative">
-              <DroneSimulator 
-                droneState={droneState}
-                setDroneState={setDroneState}
-                activeField={activeField}
-                activeMission={activeMission}
-              />
-            </div>
-
-            <TelemetryHUD 
-              droneState={droneState}
-              setDroneState={setDroneState}
-              activeField={activeField}
-            />
-          </div>
         )}
 
         {activeTab === 'alerts' && (
           <AlertsView 
             onNavigateTab={setActiveTab}
+            theme={theme}
           />
         )}
 
         {activeTab === 'reports' && (
           <ReportsView 
             activeField={activeField}
+            theme={theme}
           />
         )}
 
         {activeTab === 'settings' && (
-          <SettingsView />
-        )}
-
-        {activeTab === 'guide' && (
-          <FarmerGuide 
-            onLaunchDemo={() => setActiveTab('dashboard')}
+          <SettingsView 
+            theme={theme}
+            toggleTheme={toggleTheme}
           />
         )}
       </main>

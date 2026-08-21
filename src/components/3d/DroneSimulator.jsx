@@ -23,7 +23,8 @@ export default function DroneSimulator({
   droneState, 
   setDroneState, 
   activeField,
-  activeMission 
+  activeMission,
+  theme = 'dark'
 }) {
   const containerRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -122,10 +123,11 @@ export default function DroneSimulator({
     const height = container.clientHeight;
 
     // 1. Scene Setup
+    const isLight = theme === 'light';
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-    scene.background = new THREE.Color(0x0a1120);
-    scene.fog = new THREE.FogExp2(0x0a1120, 0.012);
+    scene.background = new THREE.Color(isLight ? 0xbfe0fd : 0x0a1120);
+    scene.fog = new THREE.FogExp2(isLight ? 0xbfe0fd : 0x0a1120, 0.01);
 
     // 2. Camera Setup
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
@@ -143,10 +145,10 @@ export default function DroneSimulator({
     rendererRef.current = renderer;
 
     // 4. Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+    const ambientLight = new THREE.AmbientLight(0xffffff, isLight ? 0.9 : 0.65);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.DirectionalLight(0xfff5ea, 1.4);
+    const sunLight = new THREE.DirectionalLight(0xfff5ea, isLight ? 1.8 : 1.4);
     sunLight.position.set(50, 70, 40);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
@@ -160,13 +162,13 @@ export default function DroneSimulator({
     sunLight.shadow.camera.bottom = -d;
     scene.add(sunLight);
 
-    const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x2d4a20, 0.4);
+    const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x2d4a20, isLight ? 0.6 : 0.4);
     scene.add(hemiLight);
 
     // 5. Ground Soil Bed
     const terrainGeo = new THREE.PlaneGeometry(120, 120, 40, 40);
     const terrainMat = new THREE.MeshStandardMaterial({
-      color: 0x241a12,
+      color: isLight ? 0x4a3b2c : 0x241a12,
       roughness: 0.95,
       metalness: 0.05
     });
@@ -176,7 +178,7 @@ export default function DroneSimulator({
     scene.add(terrain);
 
     // Grid lines overlay
-    const gridHelper = new THREE.GridHelper(100, 20, 0x10b981, 0x1e293b);
+    const gridHelper = new THREE.GridHelper(100, 20, 0x10b981, isLight ? 0x94a3b8 : 0x1e293b);
     gridHelper.position.y = 0.02;
     scene.add(gridHelper);
 
@@ -666,106 +668,106 @@ export default function DroneSimulator({
       {/* 3D WebGL Canvas Container */}
       <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
-      {/* Top Left Title & Field Badge */}
+      {/* Top Left Title & Field Badge Overlay */}
       <div className="absolute top-4 left-4 z-20 flex flex-col space-y-2 pointer-events-none">
-        <div className="glass-panel px-4 py-2.5 rounded-xl border border-slate-800 flex items-center space-x-3 pointer-events-auto shadow-xl">
+        <div className="gcs-panel px-4 py-2.5 rounded-xl border border-slate-800 flex items-center space-x-3 pointer-events-auto shadow-2xl">
           <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
           <div>
-            <div className="text-xs text-slate-400 font-medium">Active Field &amp; Mission</div>
-            <div className="text-sm font-bold text-white flex items-center space-x-2">
+            <div className="text-[10px] text-slate-400 font-mono font-medium uppercase">3D WebGL Autonomous Viewport</div>
+            <div className="text-xs font-bold text-white flex items-center space-x-2">
               <span>{activeField.name}</span>
-              <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                 {activeField.crop}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Dynamic Mode & Waypoint Indicator */}
-        <div className="glass-panel px-3 py-1.5 rounded-lg border border-slate-800 flex items-center space-x-2 text-xs pointer-events-auto">
-          <span className="text-slate-400">Operation:</span>
-          <span className="font-semibold text-emerald-400 capitalize flex items-center space-x-1">
+        {/* Dynamic Mode & Crop Spacing Indicator */}
+        <div className="gcs-panel px-3 py-1.5 rounded-lg border border-slate-800 flex items-center space-x-2 text-xs pointer-events-auto">
+          <span className="text-slate-400 text-[11px]">Mode:</span>
+          <span className="font-semibold text-emerald-400 text-[11px] capitalize flex items-center space-x-1">
             {opMode === 'seeding' && <Sprout className="w-3.5 h-3.5 text-emerald-400" />}
             {opMode === 'watering' && <Droplets className="w-3.5 h-3.5 text-blue-400" />}
             {opMode === 'pesticide' && <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />}
             {opMode === 'inspect' && <Eye className="w-3.5 h-3.5 text-cyan-400" />}
-            <span>{opMode} (Crop Spacing: {cropConfig.rowSpacing}m row / {cropConfig.plantSpacing}m plant)</span>
+            <span>{opMode} (Row: {cropConfig.rowSpacing}m / Plant: {cropConfig.plantSpacing}m)</span>
           </span>
         </div>
       </div>
 
       {/* Top Right Controls Overlay: Camera & Operations Selector */}
-      <div className="absolute top-4 right-4 z-20 flex flex-col items-end space-y-3">
+      <div className="absolute top-4 right-4 z-20 flex flex-col items-end space-y-2.5">
         
         {/* Operations Selector Card */}
-        <div className="glass-panel p-2 rounded-xl border border-slate-800 flex flex-col space-y-1 w-52 shadow-xl">
-          <div className="text-[11px] font-semibold text-slate-400 px-2 py-1 uppercase tracking-wider">
-            Flight Operation
+        <div className="gcs-panel p-2 rounded-xl border border-slate-800 flex flex-col space-y-1 w-48 shadow-2xl">
+          <div className="text-[10px] font-mono font-bold text-slate-400 px-2 py-0.5 uppercase tracking-wider">
+            Flight Mode
           </div>
 
           <button
             onClick={() => { setOpMode('seeding'); addLog(`Switched to ${cropConfig.name} Seeding Mode`); }}
-            className={`flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+            className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               opMode === 'seeding'
-                ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
+                ? 'bg-emerald-500 text-slate-950 shadow-md'
                 : 'text-slate-300 hover:bg-slate-800/60'
             }`}
           >
-            <Sprout className="w-4 h-4" />
-            <span>Seeding ({cropConfig.plantSpacing}m Plant)</span>
+            <Sprout className="w-3.5 h-3.5" />
+            <span>Seeding</span>
           </button>
 
           <button
             onClick={() => { setOpMode('watering'); addLog('Switched to Water Irrigation Mist Mode'); }}
-            className={`flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+            className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               opMode === 'watering'
-                ? 'bg-blue-500 text-white font-bold shadow-md'
+                ? 'bg-blue-500 text-white shadow-md'
                 : 'text-slate-300 hover:bg-slate-800/60'
             }`}
           >
-            <Droplets className="w-4 h-4" />
+            <Droplets className="w-3.5 h-3.5" />
             <span>Water Irrigation</span>
           </button>
 
           <button
             onClick={() => { setOpMode('pesticide'); addLog('Switched to Pesticide Protection Spray Mode'); }}
-            className={`flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+            className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               opMode === 'pesticide'
-                ? 'bg-amber-500 text-slate-950 font-bold shadow-md'
+                ? 'bg-amber-500 text-slate-950 shadow-md'
                 : 'text-slate-300 hover:bg-slate-800/60'
             }`}
           >
-            <ShieldAlert className="w-4 h-4" />
+            <ShieldAlert className="w-3.5 h-3.5" />
             <span>Pesticide Spray</span>
           </button>
 
           <button
             onClick={() => { setOpMode('inspect'); addLog('Switched to LiDAR Field Inspection Mode'); }}
-            className={`flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+            className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               opMode === 'inspect'
-                ? 'bg-cyan-500 text-slate-950 font-bold shadow-md'
+                ? 'bg-cyan-500 text-slate-950 shadow-md'
                 : 'text-slate-300 hover:bg-slate-800/60'
             }`}
           >
-            <Eye className="w-4 h-4" />
+            <Eye className="w-3.5 h-3.5" />
             <span>LiDAR Inspection</span>
           </button>
         </div>
 
         {/* Camera Views Bar */}
-        <div className="glass-panel p-1.5 rounded-xl border border-slate-800 flex items-center space-x-1 shadow-xl">
-          <span className="text-[10px] text-slate-400 font-semibold px-2">CAM:</span>
+        <div className="gcs-panel p-1 rounded-xl border border-slate-800 flex items-center space-x-1 shadow-2xl">
+          <span className="text-[10px] text-slate-400 font-mono font-bold px-1.5">CAM:</span>
           <button
             onClick={() => setCameraMode('orbit')}
-            className={`px-2.5 py-1 rounded text-xs font-medium ${
+            className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
               cameraMode === 'orbit' ? 'bg-slate-800 text-emerald-400 border border-slate-700' : 'text-slate-400 hover:text-white'
             }`}
           >
-            3D Orbit
+            Orbit
           </button>
           <button
             onClick={() => setCameraMode('follow')}
-            className={`px-2.5 py-1 rounded text-xs font-medium ${
+            className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
               cameraMode === 'follow' ? 'bg-slate-800 text-emerald-400 border border-slate-700' : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -773,15 +775,15 @@ export default function DroneSimulator({
           </button>
           <button
             onClick={() => setCameraMode('pov')}
-            className={`px-2.5 py-1 rounded text-xs font-medium ${
+            className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
               cameraMode === 'pov' ? 'bg-slate-800 text-emerald-400 border border-slate-700' : 'text-slate-400 hover:text-white'
             }`}
           >
-            Drone POV
+            POV
           </button>
           <button
             onClick={() => setCameraMode('top')}
-            className={`px-2.5 py-1 rounded text-xs font-medium ${
+            className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
               cameraMode === 'top' ? 'bg-slate-800 text-emerald-400 border border-slate-700' : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -796,26 +798,59 @@ export default function DroneSimulator({
         
         <div className="glass-panel w-full p-3.5 rounded-2xl border border-slate-800 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
           
-          {/* Main Controls: Play/Pause, Speed, Reset */}
-          <div className="flex items-center space-x-3">
+          {/* Main Flight Commands: Play/Pause, Takeoff, RTH, Land, Speed, Reset */}
+          <div className="flex items-center space-x-2 flex-wrap gap-y-2">
             <button
               onClick={() => {
                 setIsPlaying(!isPlaying);
                 addLog(isPlaying ? 'Simulation Paused' : 'Simulation Resumed');
               }}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shadow-lg transition-transform active:scale-95 ${
+              className={`px-3 py-1.5 rounded-xl flex items-center gap-1 font-bold text-xs shadow-lg transition-transform active:scale-95 ${
                 isPlaying ? 'bg-amber-500 text-slate-950' : 'bg-emerald-500 text-slate-950'
               }`}
             >
-              {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
+              <span>{isPlaying ? 'Pause' : 'Resume'}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setIsPlaying(true);
+                flightStateRef.current.currentWaypointIndex = 0;
+                addLog('Command Sent: Takeoff Initiated to Waypoint #1');
+              }}
+              className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30 text-xs font-bold transition-all"
+            >
+              Takeoff
+            </button>
+
+            <button
+              onClick={() => {
+                setIsPlaying(true);
+                flightStateRef.current.currentWaypointIndex = Math.max(0, dynamicWaypoints.length - 1);
+                addLog('Command Sent: Return-To-Home (RTH) Triggered');
+              }}
+              className="px-3 py-1.5 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/40 hover:bg-rose-500/30 text-xs font-bold transition-all"
+            >
+              Return Home
+            </button>
+
+            <button
+              onClick={() => {
+                setIsPlaying(false);
+                addLog('Command Sent: Landing Completed');
+              }}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-bold transition-all"
+            >
+              Land
             </button>
 
             <button
               onClick={resetSimulation}
-              className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 flex items-center justify-center transition-all"
+              className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 flex items-center justify-center transition-all"
               title="Reset Simulation"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-3.5 h-3.5" />
             </button>
 
             {/* Speed Multiplier Button */}
@@ -825,9 +860,9 @@ export default function DroneSimulator({
                 setSpeedMultiplier(nextSpeed);
                 addLog(`Flight Speed set to ${nextSpeed}x`);
               }}
-              className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-bold text-emerald-400 flex items-center space-x-1"
+              className="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-bold text-emerald-400"
             >
-              <span>{speedMultiplier}x Speed</span>
+              {speedMultiplier}x Speed
             </button>
           </div>
 

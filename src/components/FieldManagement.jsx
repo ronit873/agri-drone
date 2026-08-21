@@ -1,24 +1,7 @@
 import React, { useState } from 'react';
-import { 
-  MapPin, 
-  Plus, 
-  Check, 
-  Sprout, 
-  Droplets, 
-  ShieldAlert, 
-  Sun, 
-  Layers, 
-  Plane, 
-  Trash2, 
-  Search,
-  ChevronRight,
-  Compass,
-  AlertTriangle,
-  FileSpreadsheet
-} from 'lucide-react';
-import { cropConfigs, getCropConfig } from '../data/cropConfig';
 import { calculatePolygonArea } from '../utils/geoUtils';
 import { validateField } from '../utils/fieldValidator';
+import { cropConfigs, getCropConfig } from '../data/cropConfig';
 
 export default function FieldManagement({ 
   fields, 
@@ -31,7 +14,7 @@ export default function FieldManagement({
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // New field form state
+  // Form state for adding new field
   const [newField, setNewField] = useState({
     name: '',
     location: '',
@@ -40,7 +23,6 @@ export default function FieldManagement({
     moisture: 65,
     pestRisk: 'Low',
     growthStage: 'Seeding Ready',
-    // Default 4-corner polygon boundary in meters/GPS offset
     boundary: [
       { latitude: 30.733300, longitude: 76.779400 },
       { latitude: 30.733300, longitude: 76.780100 },
@@ -51,7 +33,7 @@ export default function FieldManagement({
 
   const [formErrors, setFormErrors] = useState([]);
 
-  // Calculate live area of new field boundary
+  // Calculate live acreage of boundary polygon
   const newFieldArea = calculatePolygonArea(newField.boundary);
 
   const handleVertexChange = (index, fieldKey, val) => {
@@ -111,29 +93,11 @@ export default function FieldManagement({
     setActiveField(candidate);
     setShowAddModal(false);
     
-    // Save to local storage for Phase I persistence
     try {
       localStorage.setItem('krishi_vikas_fields', JSON.stringify(updatedFields));
     } catch (e) {
       console.warn('LocalStorage save error', e);
     }
-
-    // Reset form
-    setNewField({
-      name: '',
-      location: '',
-      crop: 'Wheat (Gehun)',
-      soil: 'Alluvial Soil',
-      moisture: 65,
-      pestRisk: 'Low',
-      growthStage: 'Seeding Ready',
-      boundary: [
-        { latitude: 30.733300, longitude: 76.779400 },
-        { latitude: 30.733300, longitude: 76.780100 },
-        { latitude: 30.732700, longitude: 76.780100 },
-        { latitude: 30.732700, longitude: 76.779400 }
-      ]
-    });
   };
 
   const handleDeleteField = (id, e) => {
@@ -159,355 +123,269 @@ export default function FieldManagement({
 
   const activeCropConfig = getCropConfig(activeField.crop);
   const activeValidation = validateField(activeField);
+  const activeBoundary = activeField.boundary || activeField.polygon || [];
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        
-        {/* Header Title Section */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-6">
-          <div>
-            <div className="flex items-center space-x-2 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-1">
-              <MapPin className="w-4 h-4" />
-              <span>Phase I: Real Field Registry &amp; Boundary Management</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-              Farmer Fields &amp; GPS Boundary Polygons
-            </h1>
-            <p className="text-sm text-slate-400 mt-1">
-              Define precise GPS coordinate vertices, calculate geodesic acreage, and link crop agronomic parameters.
-            </p>
-          </div>
-
-          <button
-            onClick={() => {
-              setFormErrors([]);
-              setShowAddModal(true);
-            }}
-            className="flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-bold shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-teal-500 transition-all active:scale-95 text-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Register Field with GPS Boundary</span>
-          </button>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1700px] mx-auto space-y-6">
+      
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Fields &amp; GPS Boundary Manager</h1>
+          <p className="text-xs text-slate-400 mt-1">
+            Multi-point WGS-84 geodesic polygon editor &amp; agronomy database
+          </p>
         </div>
 
-        {/* Search & Active Field Overview Banner */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Active Selected Field Focus Card */}
-          <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-slate-800 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-              <div>
-                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                  CURRENTLY ACTIVE FIELD
-                </span>
-                <h2 className="text-xl font-bold text-white mt-2 flex items-center space-x-2">
-                  <span>{activeField.name}</span>
-                </h2>
-                <div className="flex items-center space-x-2 text-xs text-slate-400 mt-1">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{activeField.location}</span>
-                  <span>•</span>
-                  <span>{activeField.area} Acres Area</span>
-                </div>
-              </div>
+        <button
+          onClick={() => {
+            setFormErrors([]);
+            setShowAddModal(true);
+          }}
+          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/15"
+        >
+          <span className="material-symbols-outlined text-[18px]">add_location_alt</span>
+          Register New Field Parcel
+        </button>
+      </div>
 
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={onPlanMission}
-                  className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-emerald-400 font-bold text-xs transition-all shadow-md"
-                >
-                  <Compass className="w-4 h-4" />
-                  <span>Plan GPS Mission</span>
-                </button>
-                <button
-                  onClick={onDeployDrone}
-                  className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 transition-all shadow-md"
-                >
-                  <Plane className="w-4 h-4" />
-                  <span>3D Simulation</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Grid Metrics breakdown */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="glass-card p-3.5 rounded-xl border border-slate-800/80">
-                <div className="flex items-center space-x-2 text-slate-400 text-xs mb-1">
-                  <Sprout className="w-4 h-4 text-emerald-400" />
-                  <span>Crop Type</span>
-                </div>
-                <div className="text-sm font-bold text-white">{activeField.crop}</div>
-              </div>
-
-              <div className="glass-card p-3.5 rounded-xl border border-slate-800/80">
-                <div className="flex items-center space-x-2 text-slate-400 text-xs mb-1">
-                  <Layers className="w-4 h-4 text-amber-400" />
-                  <span>Row Spacing</span>
-                </div>
-                <div className="text-sm font-bold text-emerald-400">
-                  {activeCropConfig.rowSpacing}m ({activeCropConfig.rowSpacing * 100}cm)
-                </div>
-              </div>
-
-              <div className="glass-card p-3.5 rounded-xl border border-slate-800/80">
-                <div className="flex items-center space-x-2 text-slate-400 text-xs mb-1">
-                  <Droplets className="w-4 h-4 text-blue-400" />
-                  <span>Soil Moisture</span>
-                </div>
-                <div className="text-sm font-bold text-blue-400">{activeField.moisture}% (Optimal)</div>
-              </div>
-
-              <div className="glass-card p-3.5 rounded-xl border border-slate-800/80">
-                <div className="flex items-center space-x-2 text-slate-400 text-xs mb-1">
-                  <ShieldAlert className="w-4 h-4 text-amber-400" />
-                  <span>Pest Risk</span>
-                </div>
-                <div className="text-sm font-bold text-amber-400">{activeField.pestRisk || 'Low'}</div>
-              </div>
-            </div>
-
-            {/* Field GPS Boundary Vertices List */}
-            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-white flex items-center space-x-1.5">
-                  <Compass className="w-4 h-4 text-emerald-400" />
-                  <span>Polygon GPS Boundary Vertices ({(activeField.boundary || activeField.polygon)?.length || 0} Points)</span>
-                </span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                  activeValidation.isValid ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
-                }`}>
-                  {activeValidation.isValid ? 'VALID POLYGON' : 'VALIDATION ERROR'}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
-                {(activeField.boundary || activeField.polygon || []).map((pt, i) => (
-                  <div key={i} className="p-2 rounded-lg bg-slate-950 border border-slate-800/80 flex items-center justify-between">
-                    <span className="text-emerald-400 font-bold">V{i + 1}:</span>
-                    <span className="text-slate-300">
-                      {(pt.latitude || pt.lat)?.toFixed(6)}° N, {(pt.longitude || pt.lng)?.toFixed(6)}° E
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-          </div>
-
-          {/* Quick Stats & Crop Agronomic Recommendation */}
-          <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-5 flex flex-col justify-between">
+      {/* Main Focus: Active Field Polygon Visualization & Coordinates */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Dominant Field Boundary Map & Details */}
+        <div className="lg:col-span-2 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
             <div>
-              <h3 className="text-base font-bold text-white mb-3 flex items-center space-x-2">
-                <Sun className="w-4 h-4 text-amber-400" />
-                <span>Field Environment &amp; Soil</span>
-              </h3>
-              
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
-                  <span className="text-slate-400">Air Temperature:</span>
-                  <span className="font-bold text-white">31°C (Warm &amp; Clear)</span>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
-                  <span className="text-slate-400">Wind Velocity:</span>
-                  <span className="font-bold text-emerald-400">8 km/h (Ideal for Flight)</span>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
-                  <span className="text-slate-400">Soil Type:</span>
-                  <span className="font-bold text-white">{activeField.soil}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
-                  <span className="text-slate-400">Growth Stage:</span>
-                  <span className="font-bold text-teal-300">{activeField.growthStage}</span>
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  SELECTED PARCEL
+                </span>
+                <h2 className="text-lg font-bold text-white">{activeField.name}</h2>
               </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs space-y-1">
-              <div className="font-bold text-emerald-400 flex items-center space-x-1.5">
-                <Sprout className="w-4 h-4" />
-                <span>Agronomic Spacing: {activeField.crop}</span>
-              </div>
-              <p className="text-slate-300 text-[11px] leading-relaxed">
-                Row spacing: <strong>{activeCropConfig.rowSpacing}m</strong> | Intra-row plant spacing: <strong>{activeCropConfig.plantSpacing}m</strong>.
-                Optimal flight altitude: <strong>{activeCropConfig.recommendedFlightAltitude}m</strong>.
+              <p className="text-xs text-slate-400 mt-1">
+                {activeField.location} • <strong className="text-emerald-400">{activeField.area} Acres</strong>
               </p>
             </div>
-          </div>
 
-        </div>
-
-        {/* Registered Fields List */}
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-white flex items-center space-x-2">
-              <span>All Registered Fields ({fields.length})</span>
-            </h2>
-
-            {/* Search Input */}
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search field, location, or crop..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-              />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onPlanMission}
+                className="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-emerald-400 font-bold text-xs transition-all flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-[16px]">compass_calibration</span>
+                Plan Mission
+              </button>
+              <button
+                onClick={onDeployDrone}
+                className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all flex items-center gap-1.5 shadow-md shadow-emerald-500/10"
+              >
+                <span className="material-symbols-outlined text-[16px]">flight</span>
+                3D View
+              </button>
             </div>
           </div>
 
-          {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredFields.map((f) => {
-              const isActive = activeField.id === f.id;
-              const fCropConfig = getCropConfig(f.crop);
-              return (
-                <div
-                  key={f.id}
-                  onClick={() => setActiveField(f)}
-                  className={`glass-panel p-5 rounded-2xl border transition-all cursor-pointer space-y-4 ${
-                    isActive 
-                      ? 'border-emerald-500/80 bg-slate-900/90 ring-1 ring-emerald-500/50 shadow-lg shadow-emerald-500/10' 
-                      : 'border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-bold text-white text-base flex items-center space-x-2">
-                        <span>{f.name}</span>
-                        {isActive && <Check className="w-4 h-4 text-emerald-400" />}
-                      </h3>
-                      <div className="flex items-center space-x-1.5 text-xs text-slate-400 mt-1">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>{f.location}</span>
-                      </div>
-                    </div>
+          {/* Simulated 2D Map Polygon Render */}
+          <div className="w-full h-64 rounded-xl bg-slate-950 border border-slate-800 relative overflow-hidden flex items-center justify-center map-grid">
+            <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur px-3 py-1 rounded-lg border border-slate-800 text-[11px] font-mono text-slate-300">
+              Shoelace Area: {activeField.area} Acres | Vertices: {activeBoundary.length}
+            </div>
 
-                    <button
-                      onClick={(e) => handleDeleteField(f.id, e)}
-                      className="text-slate-500 hover:text-rose-400 p-1 rounded-lg hover:bg-slate-800 transition-all"
-                      title="Remove field"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+            <svg className="w-full h-full p-8" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <polygon 
+                points="15,20 85,15 80,85 20,80" 
+                fill="rgba(16, 185, 129, 0.15)" 
+                stroke="#10b981" 
+                strokeWidth="2" 
+                strokeDasharray="4,4"
+              />
+              <circle cx="15" cy="20" r="3" fill="#10b981" />
+              <circle cx="85" cy="15" r="3" fill="#10b981" />
+              <circle cx="80" cy="85" r="3" fill="#10b981" />
+              <circle cx="20" cy="80" r="3" fill="#10b981" />
+            </svg>
+          </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs border-t border-b border-slate-800/80 py-3">
-                    <div>
-                      <span className="text-slate-400 block">Area:</span>
-                      <span className="font-semibold text-slate-200">{f.area} Acres</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block">Crop:</span>
-                      <span className="font-semibold text-emerald-400">{f.crop}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block">Row Spacing:</span>
-                      <span className="font-semibold text-sky-400">{fCropConfig.rowSpacing} m</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block">GPS Vertices:</span>
-                      <span className="font-semibold text-amber-400">{(f.boundary || f.polygon)?.length || 4} Points</span>
-                    </div>
-                  </div>
+          {/* GPS Coordinates Grid */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs">
+              <h3 className="font-bold text-white flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-emerald-400 text-[18px]">location_searching</span>
+                WGS-84 Coordinate Vertices ({activeBoundary.length} Points)
+              </h3>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                activeValidation.isValid ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+              }`}>
+                {activeValidation.isValid ? 'GEODESIC POLYGON VALID' : 'VALIDATION WARNING'}
+              </span>
+            </div>
 
-                  <div className="flex items-center justify-between text-xs pt-1">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveField(f);
-                        onPlanMission();
-                      }}
-                      className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center space-x-1"
-                    >
-                      <Compass className="w-3.5 h-3.5" />
-                      <span>Plan Mission</span>
-                    </button>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveField(f);
-                        onDeployDrone();
-                      }}
-                      className="text-xs text-slate-300 hover:text-white font-semibold flex items-center space-x-1"
-                    >
-                      <span>Simulation</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono text-xs">
+              {activeBoundary.map((pt, i) => (
+                <div key={i} className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 flex items-center justify-between">
+                  <span className="text-emerald-400 font-bold">V{i + 1}:</span>
+                  <span className="text-slate-300">
+                    {(pt.latitude || pt.lat)?.toFixed(6)}° N, {(pt.longitude || pt.lng)?.toFixed(6)}° E
+                  </span>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Agronomic Recommendations Panel */}
+        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-5 flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2 border-b border-slate-800 pb-3">
+              <span className="material-symbols-outlined text-amber-400 text-[20px]">psychology</span>
+              Crop Agronomy Parameters
+            </h3>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+                <span className="text-slate-400">Crop Species:</span>
+                <span className="font-bold text-emerald-400">{activeField.crop}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+                <span className="text-slate-400">Row Spacing:</span>
+                <span className="font-bold text-white">{activeCropConfig.rowSpacing} m ({activeCropConfig.rowSpacing * 100} cm)</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+                <span className="text-slate-400">Plant-to-Plant Spacing:</span>
+                <span className="font-bold text-white">{activeCropConfig.plantSpacing} m</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+                <span className="text-slate-400">Optimum Altitude:</span>
+                <span className="font-bold text-sky-400">{activeCropConfig.recommendedFlightAltitude} m</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+                <span className="text-slate-400">Growth Stage:</span>
+                <span className="font-bold text-amber-400">{activeField.growthStage}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs space-y-1">
+            <span className="font-bold text-emerald-400 block">Agronomic Recommendation</span>
+            <p className="text-slate-300 leading-relaxed text-[11px]">
+              Ready for Boustrophedon swath flight planning. Estimated seed payload required: <strong>{(activeField.area * 12).toFixed(1)} kg</strong>.
+            </p>
           </div>
         </div>
 
       </div>
 
-      {/* Modal: Register New Field with GPS Polygon Form */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-          <div className="glass-panel max-w-xl w-full p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-5 my-8">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-white flex items-center space-x-2">
-                <MapPin className="w-5 h-5 text-emerald-400" />
-                <span>Register Field with GPS Polygon Boundary</span>
-              </h3>
-              <button 
-                onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-white text-sm font-bold px-2 py-1"
+      {/* Field List Section */}
+      <div className="space-y-4 pt-4 border-t border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h2 className="text-base font-bold text-white">Registered Field Parcels ({fields.length})</h2>
+
+          <div className="relative w-full sm:w-72">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">search</span>
+            <input
+              type="text"
+              placeholder="Search by field, crop, or location..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredFields.map((f) => {
+            const isActive = activeField.id === f.id;
+            return (
+              <div
+                key={f.id}
+                onClick={() => setActiveField(f)}
+                className={`p-5 rounded-2xl border transition-all cursor-pointer space-y-3 ${
+                  isActive 
+                    ? 'border-emerald-500/60 bg-slate-900 ring-1 ring-emerald-500/30' 
+                    : 'border-slate-800 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-900/80'
+                }`}
               >
-                ✕
-              </button>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                      <span>{f.name}</span>
+                      {isActive && <span className="text-emerald-400 font-bold">✓</span>}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">{f.location}</p>
+                  </div>
+
+                  <button
+                    onClick={(e) => handleDeleteField(f.id, e)}
+                    className="text-slate-500 hover:text-rose-400 p-1 text-xs"
+                    title="Delete field"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-800/80">
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">AREA</span>
+                    <span className="font-bold text-white">{f.area} Acres</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">CROP</span>
+                    <span className="font-bold text-emerald-400">{f.crop}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Add Field Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-slate-900 max-w-lg w-full p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white">Register GPS Polygon Field Parcel</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white font-bold">✕</button>
             </div>
 
             {formErrors.length > 0 && (
-              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs space-y-1">
-                <div className="font-bold flex items-center space-x-1">
-                  <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
-                  <span>Validation Errors</span>
-                </div>
-                <ul className="list-disc pl-4 space-y-0.5 text-[11px]">
-                  {formErrors.map((err, i) => (
-                    <li key={i}>{err}</li>
-                  ))}
-                </ul>
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                {formErrors.join(', ')}
               </div>
             )}
 
             <form onSubmit={handleAddField} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Field Name (Khet Ka Naam)</label>
+                <label className="block text-slate-300 font-medium mb-1">Field Name</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Sardar Patel - North Wheat Plot"
+                  placeholder="e.g. Ramesh Farm — Wheat Plot A"
                   value={newField.name}
                   onChange={(e) => setNewField({ ...newField, name: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Location / Village / District</label>
+                <label className="block text-slate-300 font-medium mb-1">Location</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Ludhiana, Punjab / GPS 30.7333° N, 76.7794° E"
+                  placeholder="e.g. Ludhiana, Punjab"
                   value={newField.location}
                   onChange={(e) => setNewField({ ...newField, location: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">Crop Type</label>
+                  <label className="block text-slate-300 font-medium mb-1">Crop</label>
                   <select
                     value={newField.crop}
                     onChange={(e) => setNewField({ ...newField, crop: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
                   >
                     {Object.values(cropConfigs).map(c => (
                       <option key={c.id} value={c.name}>{c.name}</option>
@@ -516,92 +394,59 @@ export default function FieldManagement({
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">Soil Type</label>
+                  <label className="block text-slate-300 font-medium mb-1">Soil</label>
                   <select
                     value={newField.soil}
                     onChange={(e) => setNewField({ ...newField, soil: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
                   >
                     <option value="Alluvial Soil">Alluvial Soil</option>
                     <option value="Black Soil">Black Soil</option>
-                    <option value="Red & Yellow Soil">Red & Yellow Soil</option>
                     <option value="Sandy Loam">Sandy Loam</option>
                   </select>
                 </div>
               </div>
 
-              {/* GPS Polygon Vertices Editor */}
+              {/* Polygon Vertices Editor */}
               <div className="border-t border-slate-800 pt-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-white uppercase text-[11px] flex items-center space-x-1.5">
-                    <Compass className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>GPS Polygon Vertices (Minimum 3 Points)</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleAddVertex}
-                    className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center space-x-1"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Add Vertex</span>
-                  </button>
+                  <span className="font-bold text-white">GPS Vertices (Min 3)</span>
+                  <button type="button" onClick={handleAddVertex} className="text-emerald-400 font-bold">+ Add Vertex</button>
                 </div>
 
-                <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-36 overflow-y-auto">
                   {newField.boundary.map((pt, index) => (
-                    <div key={index} className="flex items-center space-x-2 bg-slate-900/80 p-2 rounded-xl border border-slate-800">
-                      <span className="text-[10px] font-mono font-bold text-emerald-400 w-6">V{index + 1}</span>
-                      <div className="flex-1 grid grid-cols-2 gap-2">
-                        <input
-                          type="number"
-                          step="0.000001"
-                          placeholder="Latitude"
-                          value={pt.latitude}
-                          onChange={(e) => handleVertexChange(index, 'latitude', e.target.value)}
-                          className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-emerald-500 font-mono"
-                        />
-                        <input
-                          type="number"
-                          step="0.000001"
-                          placeholder="Longitude"
-                          value={pt.longitude}
-                          onChange={(e) => handleVertexChange(index, 'longitude', e.target.value)}
-                          className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-emerald-500 font-mono"
-                        />
-                      </div>
+                    <div key={index} className="flex items-center gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800 font-mono">
+                      <span className="text-emerald-400 font-bold">V{index+1}</span>
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={pt.latitude}
+                        onChange={(e) => handleVertexChange(index, 'latitude', e.target.value)}
+                        className="w-1/2 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-white text-[11px]"
+                      />
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={pt.longitude}
+                        onChange={(e) => handleVertexChange(index, 'longitude', e.target.value)}
+                        className="w-1/2 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-white text-[11px]"
+                      />
                       {newField.boundary.length > 3 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveVertex(index)}
-                          className="text-slate-500 hover:text-rose-400 p-1"
-                        >
-                          ✕
-                        </button>
+                        <button type="button" onClick={() => handleRemoveVertex(index)} className="text-slate-500 hover:text-rose-400">✕</button>
                       )}
                     </div>
                   ))}
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                  <span>Calculated Surface Area:</span>
-                  <span className="font-bold text-emerald-400 font-mono">{newFieldArea.acres} Acres ({newFieldArea.sqMeters} m²)</span>
+                <div className="text-[11px] text-slate-400 font-mono">
+                  Area: <strong className="text-emerald-400">{newFieldArea.acres} Acres</strong>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold shadow-lg"
-                >
-                  Save &amp; Register Field
-                </button>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold">Cancel</button>
+                <button type="submit" className="px-5 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold">Save Field</button>
               </div>
             </form>
           </div>

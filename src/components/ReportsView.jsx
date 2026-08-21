@@ -9,81 +9,83 @@ export default function ReportsView({ activeField }) {
   ];
 
   return (
-    <div className="p-gutter max-w-[1600px] mx-auto flex flex-col gap-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1700px] mx-auto space-y-6">
       
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface-container-lowest border border-outline-variant p-6 rounded-xl shadow-sm">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800 p-5 rounded-2xl">
         <div>
-          <h1 className="text-headline-lg font-headline-lg text-on-surface">Flight &amp; Mission Reports</h1>
-          <p className="text-body-md text-on-surface-variant mt-1">
-            Historical flight logs, resource efficiency analytics, and exported mission manifests
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Flight &amp; Mission Reports</h1>
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/30 uppercase">
+              DEMO LOGS
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            Historical flight manifests, coverage metrics, and resource savings
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => alert("Downloading PDF summary report...")}
-            className="bg-primary-container hover:bg-primary text-on-primary font-semibold px-4 py-2.5 rounded-lg text-label-md transition-colors flex items-center gap-2 shadow-sm"
-          >
-            <span className="material-symbols-outlined text-[18px]">download</span>
-            Export PDF Summary Report
-          </button>
+        <button 
+          onClick={() => alert("Downloading PDF summary report...")}
+          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-500/15"
+        >
+          <span className="material-symbols-outlined text-[18px]">download</span>
+          Export PDF Log Manifest
+        </button>
+      </div>
+
+      {/* Summary Highlights */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+          <span className="text-slate-400 block font-medium">Total Area Covered</span>
+          <div className="text-2xl font-extrabold text-emerald-400">24.5 Acres</div>
+          <span className="text-[11px] text-slate-400 block">100% Autonomous Execution</span>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+          <span className="text-slate-400 block font-medium">Water / Chemical Savings</span>
+          <div className="text-2xl font-extrabold text-white">35% Saved</div>
+          <span className="text-[11px] text-emerald-400 block">Micro-misting precision reduction</span>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+          <span className="text-slate-400 block font-medium">Labor Hours Saved</span>
+          <div className="text-2xl font-extrabold text-amber-400">14.2 Hours</div>
+          <span className="text-[11px] text-slate-400 block">Compared to manual tractor labor</span>
         </div>
       </div>
 
-      {/* Analytics Highlights */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-        <div className="bg-surface-container-lowest border border-outline-variant p-5 rounded-xl shadow-sm">
-          <span className="text-label-sm text-on-surface-variant font-medium">Total Area Covered</span>
-          <div className="text-display-lg text-primary font-bold mt-2">24.5 Acres</div>
-          <span className="text-label-sm text-emerald-600 font-semibold mt-1 block">100% Autonomous GPS Execution</span>
-        </div>
-
-        <div className="bg-surface-container-lowest border border-outline-variant p-5 rounded-xl shadow-sm">
-          <span className="text-label-sm text-on-surface-variant font-medium">Estimated Water / Chemical Saved</span>
-          <div className="text-display-lg text-on-surface font-bold mt-2">35% Saved</div>
-          <span className="text-label-sm text-emerald-600 font-semibold mt-1 block">Targeted Zero-Exposure Micro-Misting</span>
-        </div>
-
-        <div className="bg-surface-container-lowest border border-outline-variant p-5 rounded-xl shadow-sm">
-          <span className="text-label-sm text-on-surface-variant font-medium">Farmer Labor Time Saved</span>
-          <div className="text-display-lg text-amber-600 font-bold mt-2">14.2 Hours</div>
-          <span className="text-label-sm text-on-surface-variant/80 mt-1 block">Compared to manual tractor spraying</span>
-        </div>
-      </div>
-
-      {/* Logs Table */}
-      <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
-          <h3 className="text-headline-md font-bold text-on-surface">Recent Mission Execution Manifests</h3>
-          <span className="text-label-sm text-on-surface-variant font-medium">Showing 4 recent missions</span>
+      {/* Manifest Table */}
+      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden">
+        <div className="p-4 border-b border-slate-800 flex justify-between items-center text-xs">
+          <h3 className="font-bold text-white">Recent Mission Manifests</h3>
+          <span className="text-slate-400 font-mono">4 Completed Flights</span>
         </div>
 
         <div className="w-full overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-outline-variant/60 text-label-sm text-on-surface-variant uppercase bg-surface-container/50">
-                <th className="p-4 font-semibold">Log ID</th>
-                <th className="p-4 font-semibold">Date</th>
-                <th className="p-4 font-semibold">Mission Type</th>
-                <th className="p-4 font-semibold">Field Parcel</th>
-                <th className="p-4 font-semibold">Flight Time</th>
-                <th className="p-4 font-semibold">Coverage</th>
-                <th className="p-4 font-semibold text-right">Status</th>
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-950 text-slate-400 font-mono text-[10px] uppercase border-b border-slate-800">
+              <tr>
+                <th className="p-3.5">Log ID</th>
+                <th className="p-3.5">Date</th>
+                <th className="p-3.5">Operation Type</th>
+                <th className="p-3.5">Field Parcel</th>
+                <th className="p-3.5">Flight Time</th>
+                <th className="p-3.5">Coverage</th>
+                <th className="p-3.5 text-right">Status</th>
               </tr>
             </thead>
-            <tbody className="text-body-md text-on-surface">
+            <tbody className="divide-y divide-slate-800/60 text-slate-300 font-mono text-[11px]">
               {missionLogs.map((log) => (
-                <tr key={log.id} className="border-b border-outline-variant/30 hover:bg-surface-container-low transition-colors">
-                  <td className="p-4 font-mono font-bold text-primary">{log.id}</td>
-                  <td className="p-4">{log.date}</td>
-                  <td className="p-4 font-medium">{log.type}</td>
-                  <td className="p-4 text-on-surface-variant">{log.field}</td>
-                  <td className="p-4 font-mono">{log.duration}</td>
-                  <td className="p-4">{log.coverage}</td>
-                  <td className="p-4 text-right">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary-container/30 text-primary-container text-label-sm font-semibold border border-secondary-container">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+                <tr key={log.id} className="hover:bg-slate-900/80 transition-colors">
+                  <td className="p-3.5 font-bold text-emerald-400">{log.id}</td>
+                  <td className="p-3.5 font-sans text-slate-300">{log.date}</td>
+                  <td className="p-3.5 font-sans font-medium text-white">{log.type}</td>
+                  <td className="p-3.5 font-sans text-slate-400">{log.field}</td>
+                  <td className="p-3.5 text-sky-400">{log.duration}</td>
+                  <td className="p-3.5 text-slate-200">{log.coverage}</td>
+                  <td className="p-3.5 text-right">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-sans font-bold">
                       {log.status}
                     </span>
                   </td>
